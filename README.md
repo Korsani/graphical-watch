@@ -71,12 +71,13 @@ There is a status zone on the top left of the screen, like:
 First line is the command (or the string you gave with ```-t ``` )
 
 Second line is:
-	- 25 < 25 < 43 : min value < current value < max value 
-	- w=119.0s : width of the screen, in seconds
-	- tick=2.5s : each X tick is 2.5s wide
-	- n=0.50s : value is displayed each 0.5s
-	- s=1.0x : scale factor is 1.0x
-	- x=19 y=47.00 : x and y coordinate (in term column/line)
+
+- 25 < 25 < 43 : min value < current value < max value 
+- w=119.0s : width of the screen, in seconds
+- tick=2.5s : each X tick is 2.5s wide
+- n=0.50s : value is displayed each 0.5s
+- s=1.0x : scale factor is 1.0x
+- x=19 y=47.00 : x and y coordinate (in term column/line)
 
 Third line is the date of the last printed dot.
 
