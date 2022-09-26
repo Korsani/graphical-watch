@@ -36,7 +36,7 @@ Copy grwatch.sh(1) somewhere accessible by your PATH, or set PATH so that it fin
 Act like watch(1):
 
 	# Run 'pgrep -c php-fpm' every 20s
-	grwatch.sh -n 20 "pgrep -c php-fpm"
+	$ grwatch.sh -n 20 "pgrep -c php-fpm"
 
 Act like Grafana:
 
