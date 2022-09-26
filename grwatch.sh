@@ -165,8 +165,6 @@ function _usage() {
 	echo
 	echo "$bn [ -n <interval in second> | -w <width in second> ] [ -s <scale factor> ] [ -0 <value> ] [ -r ] [ -m <mark> ] [ -t <command title> ] <\"command than returns integer\">"
 	echo
-	echo "scale factor : nombre de valeur par ligne de text. Zoom si < 1, aplati si > 1"
-	echo
 	echo "-0 : set the horizontal axis to that value"
 	echo "-m : use that one-char string to display dot"
 	echo "-n : sleep that seconds between each dot. May be decimal. Default is 2s"
@@ -217,6 +215,8 @@ while getopts '0:hm:n:rs:t:w:' opt ; do
 	esac
 done
 preflight_check || exit 1
+WINDOW_WIDTH="$(bc<<<"$SLEEP*$COLUMNS")"
+X_TICKS_WIDTH="$(bc<<<"$X_TICKS_STEP*$SLEEP")"
 col=1
 n=0
 shift $((OPTIND-1))
@@ -225,6 +225,8 @@ command="${1:-read -r v ; echo \$v}"
 if [ -z "$start_value" ] ; then
 	start_value="$(eval "$command")"
 fi
+min=$start_value
+max=$start_value
 if ! is_int "$start_value" ; then
 	echo "Start value '$start_value' is not even an int..." >&2
 	exit 2
@@ -239,8 +241,6 @@ else
 	RGB=( $MARK_COLOR )
 	RGB_start=0
 fi
-min=$start_value
-max=$start_value
 while true ; do
 	value="$(eval "$command")"
 	if ! is_int "$value" ; then
@@ -270,7 +270,7 @@ while true ; do
 	dot[$x]=$int_y
 	echo -ne "\e[${int_y};${x}H\e[38;2;${RGB[$rgb]}m${MARK_TIP}\e[0m"
 	# status line
-	printf "\e[2;1H%i\e[0m < \e[1;4;37m%i\e[0m < %i w=%0.01fs tick=%0.01fs n=%0.2fs s=%0.01fx x=%i y=%0.02f\e[0K" "$min" "$value" "$max" "$(bc<<<"$COLUMNS*$SLEEP")" "$(bc<<<"$X_TICKS_STEP*$SLEEP")" "$SLEEP" "$scale_factor" "$x" "$int_y"
+	printf "\e[2;1H%i\e[0m < \e[1;4;37m%i\e[0m < %i w=%0.0fs tick=%0.01fs n=%0.2fs s=%0.01fx x=%i y=%0.02f\e[0K" "$min" "$value" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$SLEEP" "$scale_factor" "$x" "$int_y"
 	# date line
 	printf '\e[3;1H%s\e[0K' "$(date '+%Y-%m-%d@%H:%M:%S')"
 	last_x="$x"
