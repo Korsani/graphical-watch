@@ -112,7 +112,8 @@ function disp_y_ticks() {
 	fi
 	for l in ${ticks[*]}; do
 		echo -ne "\e[$l;1H"
-		printf "%0.01f" "$(value_to_y "$l")"
+		#printf "%0.01f" "$(value_to_y "$l")"
+		printf "%0.01f" "$(bc<<<"$start_value-(($l-$lcenter)*$scale_factor)")"
 	done
 	echo -ne "\e[0m"
 }
