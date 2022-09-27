@@ -66,18 +66,19 @@ More examples:
 
 There is a status zone on the top left of the screen, like:
 
-	$ Temp of thermal0
-	25 < 25 < 43 w=119.0s tick=2.5s n=0.50s s=1.0x x=19 y=47.00
+	Every 10s: Temp of thermal0
+	25 m:25 M:43 w=119.0s tick=2.5s n=0.50s s=1.0x x=19 y=47.00
 	2022-09-27@00:25:30
 
-First line is the command (or the string you gave with ```-t ``` )
+First line is the periodicity and the command (or the string you gave with ```-t ``` )
 
 Second line is:
 
-- 25 < 25 < 43 : min value < current value < max value 
+- 25: current value
+- m=25: min value
+- M=43: max value
 - w=119.0s : width of the screen, in seconds
 - tick=2.5s : each X tick is 2.5s wide
-- n=0.50s : value is displayed each 0.5s
 - s=1.0x : scale factor is 1.0x
 - x=19 y=47.00 : x and y coordinate (in term column/line)
 

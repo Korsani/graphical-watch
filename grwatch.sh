@@ -92,7 +92,7 @@ function generate_rainbow() {
 # Draw the x line, at coord $1
 function h_line() {
 	local y="$1"
-	echo -ne "\e[$y;1Hi\e[38;5;${HLINE_COLOR}m"
+	echo -ne "\e[$y;1H\e[38;5;${HLINE_COLOR}m"
 	printf -- '―%.0s' $(seq 1 "$COLUMNS")
 	disp_x_ticks "$y"
 	echo -ne "\e[0m"
@@ -135,7 +135,7 @@ function disp_x_ticks() {
 function clean_screen() {
 	local command="$1"
 	echo -ne "\e[2J\e[?25l"
-	echo -ne "\e[1;1H${command_title:-$command}"
+	printf "\e[1;1HEvery %0.0fs: %s" "$SLEEP" "${command_title:-$command}"
 	h_line "$lcenter"
 }
 # Clean the column at (absolute) position $1
@@ -198,8 +198,7 @@ function correct_last_mark() {
 function disp_status() {
 	local min=$1 value=$2 max=$3 scale_factor=$4 x=$5 y=$6
 	# status line
-	#printf "\e[2;1H%i\e[0m < \e[1;4;37m%i\e[0m < %i w=%0.0fs tick=%0.01fs n=%0.2fs s=%0.01fx x=%i y=%0.02f\e[0K" "$min" "$value" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$SLEEP" "$scale_factor" "$x" "$int_y"
-	printf "\e[2;1H\e[1;4;37m%i\e[0m m:%i M:%i w=%0.0fs tick=%0.01fs n=%0.2fs s=%0.01fx x=%i y=%0.02f\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$SLEEP" "$scale_factor" "$x" "$int_y"
+	printf "\e[2;1H\e[1;4;37m%i\e[0m m=%i M=%i tick=%0.01fs n=%0.2fs s=%0.01fx x=%i y=%0.02f\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y"
 	# date line
 	printf "\e[1;${DATE_COLUMNS}H%s: %s" "$HOSTNAME" "$(date '+%Y-%m-%d@%H:%M:%S')"
 }
