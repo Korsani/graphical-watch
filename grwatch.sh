@@ -14,7 +14,7 @@ HLINE_COLOR=053
 RAINBOW=''
 SLEEP=2
 HEADER_SIZE=3
-X_TICK='+'
+X_TICK='|'
 X_TICKS_STEP=5
 Y_TICKS_STEP=5
 scale_factor=1
@@ -122,7 +122,7 @@ function disp_x_ticks() {
 	echo -ne "\e[38;5;${HLINE_COLOR}m"
 	if [ -n "$x" ] ; then	# if I got only y, I draw all the ticks
 		for i in $(seq "${X_TICKS_STEP}" "${X_TICKS_STEP}" "${COLUMNS}") ; do
-			echo -ne "\e[$y;${i}H+"
+			echo -ne "\e[$y;${i}H${X_TICK}"
 		done
 	else	# should I REALLY put a tick?
 		if [ "$((x % X_TICKS_STEP))" -eq "0" ] ; then
