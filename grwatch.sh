@@ -34,6 +34,8 @@ start_value=''
 last_x=''
 last_y=''
 last_mc=''
+MIN=''
+MAX=''
 declare -a dot
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Some checks
@@ -47,10 +49,10 @@ function preflight_check() {
 function _log() {
 	echo -ne "\e[$LINES;1H$1\e[0K"
 }
-# Return true if $1 is belonging to the N ensemble
-function is_int() {
+# Return true if $1 is a float
+function is_float() {
 	local v="$1"
-	[[ "$v" =~ ^[-+]?[0-9]+$ ]]
+	[[ "$v" =~ ^[-+]?[0-9]*[.,]*[0-9]+$ ]]
 }
 # Generate the rgb values of the hues of the chromatic circle, by steps of $1
 # Running chromatic circle make rgb value vary this way:
@@ -162,12 +164,16 @@ function _usage() {
 	echo "$bn [ -n <interval in second> | -w <width in second> ] [ -s <scale> ] [ -0 <value> ] [ -r ] [ -m <mark> ] [ -t <command title> ] <\"command than returns integer\">"
 	echo
 	echo "-0 : set the horizontal axis to that value"
+	echo "-l : set lower value"
 	echo "-m : use that one-char string to display dot"
 	echo "-n : sleep that seconds between each dot. May be decimal. Default is 2s"
 	echo "-r : rainbow mode"
 	echo "-s : scale. One line height in the term will count for that many values. Set to < 1 to zoom in, > 1 to zoom out. Default is 1"
 	echo "-t : display that string in status bar instead of the command"
+	echo "-u : set upper value"
 	echo "-w : set the duration of a screen to that many seconds, compute -n accordingly"
+	echo
+	echo "scale is calculated if -l and -u are provided"
 	echo
 	echo "Examples:"
 	echo "	On Linux:"
@@ -218,7 +224,7 @@ function redraw() {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Set me at the end of the screen upon exit
 trap 'echo -ne "\e[?25h\e[$LINES;1H"' 0
-while getopts '0:hm:n:rs:t:w:' opt ; do
+while getopts '0:hl:m:n:rs:t:u:w:' opt ; do
 	case $opt in
 		0)	start_value="${OPTARG}";;
 		m)	MARK="$OPTARG";;
@@ -228,6 +234,8 @@ while getopts '0:hm:n:rs:t:w:' opt ; do
 		r)	RAINBOW='y';;
 		t)	command_title="$OPTARG";;
 		h)	_usage ; exit 0;;
+		l)	MIN="$OPTARG";;
+		u)	MAX="$OPTARG";;
 	esac
 done
 preflight_check || exit 1
@@ -243,15 +251,22 @@ if [ -z "${1:-}" ] ; then
 else
 	command="${1}"
 fi
-if [ -z "$start_value" ] ; then
-	start_value="$(eval "$command")"
+if [ -n "$MIN" ] && [ -n "$MAX" ] ; then
+	if [ "$MIN" -lt "$MAX" ] ; then
+		printf -v start_value '%0.0f' "$(bc <<<"scale=2;($MAX+($MIN))/2")"
+		scale_factor="$( bc <<<"scale=2;($MAX-($MIN))/$LINES" )"
+	else
+		echo "-l MUST BE strictly lower that -u" >&2
+		exit 2
+	fi
 fi
+# Read value while I don't have an int
+while ! is_float "$start_value" ; do
+	start_value="$(sh -c "$command")"
+done
+printf -v start_value '%0.0f' "$start_value"
 min=$start_value
 max=$start_value
-if ! is_int "$start_value" ; then
-	echo "Start value '$start_value' is not even an int..." >&2
-	exit 2
-fi
 clean_screen
 if [ -n "$RAINBOW" ] ; then
 	_log "Generating rainbow table..."
@@ -263,18 +278,20 @@ else
 	RGB_start=0
 fi
 while true ; do
-	value="$(eval "$command")"
-	if ! is_int "$value" ; then
+	value="$(sh -c "$command")"
+	if ! is_float "$value" ; then
 		asc="$(printf "%02.2X" "'$value'")"
 		if [ "$asc" -ne "27" ] ; then				# if it's not EOF
-			_log "'$value' (0x$asc) is not an int"
+			_log "'$value' (0x$asc) is not a float"
 			continue
 		else
 			exit 0
 		fi
+	else
+		printf -v value '%0.0f' "$value"
 	fi
 	x="$col"
-	# value => line (eventualy floating value)
+	# value => line (eventualy a float value)
 	y="$(value_to_y "$value")"
 	printf -v int_y '%0.0f' "$y"
 	if [ "$value" -lt "$min" ] ; then
@@ -283,8 +300,8 @@ while true ; do
 	if [ "$value" -gt "$max" ] ; then
 		max="$value"
 	fi
-	if [ "$int_y" -lt 0 ] || [ "$int_y" -gt "$LINES" ] ; then
-		scale_factor="$(bc <<<"scale=2;($value-($start_value))/($LINES-$lcenter)" | tr -d '-' )"
+	if [ "$int_y" -lt "$HEADER_SIZE" ] || [ "$int_y" -gt "$((LINES-1))" ] ; then
+		scale_factor="$(bc <<<"scale=2;($value-($start_value))/($LINES-$HEADER_SIZE-$lcenter)" | tr -d '-' )"
 		clean_screen
 		redraw "$col"
 		disp_status "$min" "$value" "$max" "$scale_factor" "$x" "$y"
