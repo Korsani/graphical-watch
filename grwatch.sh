@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Term code
-# https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
-# About UTF8
-# https://unicode-table.com/fr/search/?q=braille
 # Un sinusoïde
 # i=0 ; while true ; do LANG=C printf '%0.0f\n' "$(bc -l <<<"scale=2;20*s($i*(2*6.28)/360)")" ; ((i+=1)); done
 set -eu

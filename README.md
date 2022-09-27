@@ -98,3 +98,5 @@ Third line is the date of the last printed dot.
 
 - bc(1)
 - Grafana
+- [https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797](A nice list of term codes)
+- [https://unicode-table.com/fr](UTF8 table and search)
