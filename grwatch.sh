@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 set -eu
 LANG=C
-# Evidemment...
-case $(uname) in
-	Darwin)	MARK_TIP='⬥';;
-	*)		MARK_TIP='◆';;
-esac
 # █■⯀▪·
-MARK='⯀'
+# Of course...
+case $(uname) in
+	Darwin)	MARK_TIP='⬥'; MARK='■' ;;
+	*)		MARK_TIP='◆'; MARK='⯀' ;;
+esac
 MARK_COLOR="255;255;255"
 TICK_COLOR=184
 HLINE_COLOR=053
@@ -238,7 +237,12 @@ col=1
 n=0
 shift $((OPTIND-1))
 # Tiny hack to have the "read-from-stdin" command
-command="${1:-read -r v ; echo \$v}"
+if [ -z "${1:-}" ] ; then
+	command="read -r v ; echo \$v"
+	command_title="${command_title:-<stdin>}"
+else
+	command="${1}"
+fi
 if [ -z "$start_value" ] ; then
 	start_value="$(eval "$command")"
 fi
