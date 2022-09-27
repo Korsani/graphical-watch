@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Un sinusoïde
-# i=0 ; while true ; do LANG=C printf '%0.0f\n' "$(bc -l <<<"scale=2;20*s($i*(2*6.28)/360)")" ; ((i+=1)); done
 set -eu
 LANG=C
 # Evidemment...
@@ -21,14 +19,16 @@ Y_TICKS_STEP=5
 scale_factor=1
 export LINES="$(tput lines)"
 export COLUMNS="$(tput cols)"
-# Position des ticks y en relatif par rapport au centre
+# y ticks position relative to center
 Y_TICKS_RELPOS=( $(seq $(( (-LINES+HEADER_SIZE*Y_TICKS_STEP)/2 )) $Y_TICKS_STEP $(( (LINES-HEADER_SIZE*Y_TICKS_STEP)/2 )) ) )
-# Nombre de char max d'un label de tick
+# size of a tick label, in char
 Y_TICKS_STR_LEN="$(wc -c <<< "${Y_TICKS_RELPOS[-1]}" )"
-# Position de la ligne du centre
+# central line position
 lcenter="$(( LINES-(LINES-HEADER_SIZE)/2))"
-# Position absolue de ticks y
+# absolute position of y ticks
 Y_TICKS_LABSPOS=( $(seq $(( (lcenter+(-LINES+HEADER_SIZE*Y_TICKS_STEP)/2) )) $Y_TICKS_STEP $(( (lcenter+(LINES-HEADER_SIZE*Y_TICKS_STEP)/2) )) ) )
+HOSTNAME="$(hostname)"
+DATE_COLUMNS="$((COLUMNS-19-${#HOSTNAME}-2))"
 command=''
 start_value=''
 last_x=''
@@ -135,7 +135,7 @@ function disp_x_ticks() {
 function clean_screen() {
 	local command="$1"
 	echo -ne "\e[2J\e[?25l"
-	echo -ne "\e[1;1H\$ ${command_title:-$command}"
+	echo -ne "\e[1;1H${command_title:-$command}"
 	h_line "$lcenter"
 }
 # Clean the column at (absolute) position $1
@@ -177,7 +177,7 @@ function _usage() {
 	echo "	$bn -n 0.5 -0 43 'cat /sys/class/thermal/thermal_zone0/temp | cut -c -2'"
 	echo
 	echo "Show a rainbow bubble sine:"
-	echo "	for i in {0..180} ; do LANG=C printf '%0.0f\n' \"\$(bc -l <<<\"scale=2;20*s(\$i*(2*6.28)/360)\")\" ; done | $bn -n 0 -r -m 'o' -t sine"
+	echo "	i=0 ; while true ; do LANG=C printf '%0.0f\n' \"\$(bc -l <<<\"scale=2;20*s(\$i*(2*6.28)/360)\")\" ; ((i+=1)) ; done | $bn -n 0 -r -m 'o' -t sine"
 	echo
 	echo "Monitor number of php-fpm processes on a 1-hour graph:"
 	echo "	$bn -w 3600 -r -m '-' 'pgrep -c php-fpm'"
@@ -194,6 +194,14 @@ function correct_last_mark() {
 	if [ "$last_x" -lt "${Y_TICKS_STR_LEN}" ] && [[ " ${Y_TICKS_LABSPOS[*]} " =~ " $last_y " ]] ; then
 		disp_y_ticks "$last_y"
 	fi
+}
+function disp_status() {
+	local min=$1 value=$2 max=$3 scale_factor=$4 x=$5 y=$6
+	# status line
+	#printf "\e[2;1H%i\e[0m < \e[1;4;37m%i\e[0m < %i w=%0.0fs tick=%0.01fs n=%0.2fs s=%0.01fx x=%i y=%0.02f\e[0K" "$min" "$value" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$SLEEP" "$scale_factor" "$x" "$int_y"
+	printf "\e[2;1H\e[1;4;37m%i\e[0m m:%i M:%i w=%0.0fs tick=%0.01fs n=%0.2fs s=%0.01fx x=%i y=%0.02f\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$SLEEP" "$scale_factor" "$x" "$int_y"
+	# date line
+	printf "\e[1;${DATE_COLUMNS}H%s: %s" "$HOSTNAME" "$(date '+%Y-%m-%d@%H:%M:%S')"
 }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Set me at the end of the screen upon exit
@@ -265,10 +273,7 @@ while true ; do
 	# store the y value of the current x value (to delete it next time)
 	dot[$x]=$int_y
 	echo -ne "\e[${int_y};${x}H\e[38;2;${RGB[$rgb]}m${MARK_TIP}\e[0m"
-	# status line
-	printf "\e[2;1H%i\e[0m < \e[1;4;37m%i\e[0m < %i w=%0.0fs tick=%0.01fs n=%0.2fs s=%0.01fx x=%i y=%0.02f\e[0K" "$min" "$value" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$SLEEP" "$scale_factor" "$x" "$int_y"
-	# date line
-	printf '\e[3;1H%s\e[0K' "$(date '+%Y-%m-%d@%H:%M:%S')"
+	disp_status "$min" "$value" "$max" "$scale_factor" "$x" "$y"
 	last_x="$x"
 	last_y="$int_y"
 	last_mc="${RGB[$rgb]}"
