@@ -88,7 +88,6 @@ Third line is the date of the last printed dot.
 
 - Does only graph integers
 - Y axis is in the middle
-- Does not auto-scale
 
 # Made with
 
