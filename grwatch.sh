@@ -14,6 +14,7 @@ HLINE_COLOR=053
 RAINBOW=''
 SLEEP=2
 HEADER_SIZE=3
+X_TICK='+'
 X_TICKS_STEP=5
 Y_TICKS_STEP=5
 scale_factor=1
@@ -125,7 +126,7 @@ function disp_x_ticks() {
 		done
 	else	# should I REALLY put a tick?
 		if [ "$((x % X_TICKS_STEP))" -eq "0" ] ; then
-			echo -ne "\e[$y;${x}H+"
+			echo -ne "\e[$y;${x}H${X_TICK}"
 		fi
 	fi
 	echo -ne "\e[0m"
@@ -206,6 +207,9 @@ function disp_status() {
 function value_to_y() {
 	local v="$1"
 	bc <<< "scale=1;$lcenter - ( ($v-$start_value)/$scale_factor )"
+}
+function redraw() {
+	ls
 }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Set me at the end of the screen upon exit
