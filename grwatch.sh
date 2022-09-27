@@ -159,13 +159,13 @@ function _usage() {
 	local bn="$(basename "$0")"
 	echo " ~ Graphical watch(1) - a.k.a Grafana in term ~"
 	echo
-	echo "$bn [ -n <interval in second> | -w <width in second> ] [ -s <scale factor> ] [ -0 <value> ] [ -r ] [ -m <mark> ] [ -t <command title> ] <\"command than returns integer\">"
+	echo "$bn [ -n <interval in second> | -w <width in second> ] [ -s <scale> ] [ -0 <value> ] [ -r ] [ -m <mark> ] [ -t <command title> ] <\"command than returns integer\">"
 	echo
 	echo "-0 : set the horizontal axis to that value"
 	echo "-m : use that one-char string to display dot"
 	echo "-n : sleep that seconds between each dot. May be decimal. Default is 2s"
 	echo "-r : rainbow mode"
-	echo "-s : scale factor. One line height in the term will count for that many values. Set to < 1 to zoom in, > 1 to zoom out. Default is 1"
+	echo "-s : scale. One line height in the term will count for that many values. Set to < 1 to zoom in, > 1 to zoom out. Default is 1"
 	echo "-t : display that string in status bar instead of the command"
 	echo "-w : set the duration of a screen to that many seconds, compute -n accordingly"
 	echo

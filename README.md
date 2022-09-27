@@ -6,7 +6,7 @@ Have you ever wanted watch(1) to graph command's output ? Or you sometimes want 
 
 This pure shell script is for you!
 
-Unlike the nice [gwatch](https://github.com/robertely/gwatch), it is pure shell, and colored.
+Unlike the nice [gwatch](https://github.com/robertely/gwatch), it is pure shell, and colored, and can take from stdin, and has more options.
 
 # Starting
 
@@ -23,13 +23,13 @@ Copy grwatch.sh(1) somewhere accessible by your PATH, or set PATH so that it fin
 
 ## Options
 
-	grwatch.sh [ -n <interval in second> | -w <width in second> ] [ -s <scale factor> ] [ -0 <value> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ "command than returns integer" ]
+	grwatch.sh [ -n <interval in second> | -w <width in second> ] [ -s <scale> ] [ -0 <value> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ "command than returns integer" ]
 
 	-0 : set the horizontal axis to that value instead of the first one returned by the command (or by stdin)
 	-m : use that one-char string to display dot
 	-n : sleep that seconds between each dot. May be decimal. Default is 2s
 	-r : rainbow mode.
-	-s : scale factor. One line height in the term will count for that many values. Set to < 1 to zoom in, > 1 to zoom out. Default is 1 (no zoom).
+	-s : scale. One line height in the term will count for that many values. Set to < 1 to zoom in, > 1 to zoom out. Default is 1 (no zoom).
 	-t : display that string in status bar instead of the command
 	-w : set the duration of a screen to that many seconds, compute -n accordingly
 
@@ -79,15 +79,21 @@ Second line is:
 - M=43: max value
 - w=119.0s : width of the screen, in seconds
 - tick=2.5s : each X tick is 2.5s wide
-- s=1.0x : scale factor is 1.0x
+- s=1.0x : scale is 1.0x
 - x=19 y=47.00 : x and y coordinate (in term column/line)
 
 Third line is the date of the last printed dot.
 
-# Caveats / To do
+## Autoscale
 
-- Does only graph integers
-- Y axis is in the middle
+Scale is recalculated if value exceed bounds. Graph is redraw with the new scale.
+
+Starting value is kept. That means that graph is not recentered, juste zoomed in or out.
+
+# To do
+
+- Graph float
+- Allow y axis to be elsewhere than in the middle
 
 # Made with
 
