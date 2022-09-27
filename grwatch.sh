@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -eu
 LANG=C
+LC_ALL=C
 # █■⯀▪·
 # Of course...
 case $(uname) in
