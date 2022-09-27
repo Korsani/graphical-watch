@@ -4,7 +4,9 @@ When watch(1) meet Grafana
 
 Have you ever wanted watch(1) to graph command's output ? Or you sometimes want to graph shell script output and you don't want to install Grafana ?
 
-This script is for you!
+This pure shell script is for you!
+
+Unlike the nice [gwatch](https://github.com/robertely/gwatch), it is pure shell, and colored.
 
 # Starting
 
@@ -98,5 +100,5 @@ Third line is the date of the last printed dot.
 
 - bc(1)
 - Grafana
-- [https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797](A nice list of term codes)
-- [https://unicode-table.com/fr](UTF8 table and search)
+- [A nice list of term codes)[https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797]
+- [UTF8 table and search](https://unicode-table.com/fr)
