@@ -112,7 +112,7 @@ function disp_y_ticks() {
 	fi
 	for l in ${ticks[*]}; do
 		echo -ne "\e[$l;1H"
-		printf "%0.01f" "$(bc<<<"$start_value-(($l-$lcenter)*$scale_factor)")"
+		printf "%0.01f" "$(value_to_y "$l")"
 	done
 	echo -ne "\e[0m"
 }
@@ -131,10 +131,8 @@ function disp_x_ticks() {
 	fi
 	echo -ne "\e[0m"
 }
-# Clean the screen
-# Print the command (or the argument given by -t) and the x axis
+# Clean the screen and draw x axis
 function clean_screen() {
-	local command="$1"
 	echo -ne "\e[2J\e[?25l"
 	printf "\e[1;1HEvery %0.0fs: %s" "$SLEEP" "${command_title:-$command}"
 	h_line "$lcenter"
@@ -200,7 +198,7 @@ function correct_last_mark() {
 function disp_status() {
 	local min=$1 value=$2 max=$3 scale_factor=$4 x=$5 y=$6
 	# status line
-	printf "\e[2;1H\e[1;4;37m%i\e[0m m=%i M=%i tick=%0.01fs n=%0.2fs s=%0.01fx x=%i y=%0.02f\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y"
+	printf "\e[2;1H\e[1;4;37m%i\e[0m m=%i M=%i w=%0.0fs tick=%0.01fs s=%0.01fx x=%i y=%0.02f\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y"
 	# date line
 	printf "\e[1;${DATE_COLUMNS}H%s: %s" "$HOSTNAME" "$(date '+%Y-%m-%d@%H:%M:%S')"
 }
@@ -209,7 +207,13 @@ function value_to_y() {
 	bc <<< "scale=1;$lcenter - ( ($v-$start_value)/$scale_factor )"
 }
 function redraw() {
-	ls
+	local till="$1"
+	local x y
+	for x in $(seq 1 "$((till-1))") ; do
+		printf -v y '%0.0f' "$( value_to_y "${dot[$x]:-}")"	# do I have the coordinate of the dot here?
+		rgb="$(( (x + RGB_start) % ${#RGB[*]} ))"
+		echo -ne "\e[${y};${x}H\e[38;2;${RGB[$rgb]}m${MARK}\e[0m"
+	done
 }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Set me at the end of the screen upon exit
@@ -243,7 +247,7 @@ if ! is_int "$start_value" ; then
 	echo "Start value '$start_value' is not even an int..." >&2
 	exit 2
 fi
-clean_screen "$command"
+clean_screen
 if [ -n "$RAINBOW" ] ; then
 	_log "Generating rainbow table..."
 	RGB=( $(generate_rainbow 15) )
@@ -274,11 +278,20 @@ while true ; do
 	if [ "$value" -gt "$max" ] ; then
 		max="$value"
 	fi
-	correct_last_mark "$last_y" "$last_x" "$last_mc"
+	if [ "$int_y" -lt 0 ] || [ "$int_y" -gt "$LINES" ] ; then
+		scale_factor="$(bc <<<"scale=2;($value-($start_value))/($LINES-$lcenter)" | tr -d '-' )"
+		clean_screen
+		redraw "$col"
+		disp_status "$min" "$value" "$max" "$scale_factor" "$x" "$y"
+		y="$(value_to_y "$value")"
+		printf -v int_y '%0.0f' "$y"
+	else
+		correct_last_mark "$last_y" "$last_x" "$last_mc"
+	fi
 	# next color: next value in the array, wrapping
 	rgb="$(( (n + RGB_start) % ${#RGB[*]} ))"
-	# store the y value of the current x value (to delete it next time)
-	dot[$x]=$value
+	# store the value of the current x value (to delete it next time)
+	dot[$x]="$value"
 	echo -ne "\e[${int_y};${x}H\e[38;2;${RGB[$rgb]}m${MARK_TIP}\e[0m"
 	disp_status "$min" "$value" "$max" "$scale_factor" "$x" "$y"
 	last_x="$x"
