@@ -285,8 +285,10 @@ while true ; do
 		disp_status "$min" "$value" "$max" "$scale_factor" "$x" "$y"
 		y="$(value_to_y "$value")"
 		printf -v int_y '%0.0f' "$y"
+		_log "Set scale to $scale_factor"
 	else
 		correct_last_mark "$last_y" "$last_x" "$last_mc"
+		_log ""
 	fi
 	# next color: next value in the array, wrapping
 	rgb="$(( (n + RGB_start) % ${#RGB[*]} ))"
