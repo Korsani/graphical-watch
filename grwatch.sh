@@ -141,7 +141,8 @@ function clean_screen() {
 # Clean the column at (absolute) position $1
 function clean_next() {
 	local x="$1"
-	local y=${dot[$x]:-}	# do I have the coordinate of the dot here?
+	local y
+	printf -v y '%0.0f' "$( value_to_y "${dot[$x]:-}")"	# do I have the coordinate of the dot here?
 	if [ -n "$y" ] ; then
 		echo -ne "\e[$y;${x}H "
 		if [ "$y" -eq "$lcenter" ] ; then	# am I on the x axis?
@@ -202,6 +203,10 @@ function disp_status() {
 	# date line
 	printf "\e[1;${DATE_COLUMNS}H%s: %s" "$HOSTNAME" "$(date '+%Y-%m-%d@%H:%M:%S')"
 }
+function value_to_y() {
+	local v="$1"
+	bc <<< "scale=1;$lcenter - ( ($v-$start_value)/$scale_factor )"
+}
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Set me at the end of the screen upon exit
 trap 'echo -ne "\e[?25h\e[$LINES;1H"' 0
@@ -257,9 +262,8 @@ while true ; do
 	fi
 	x="$col"
 	# value => line (eventualy floating value)
-	y="$(bc <<< "scale=1;$lcenter - ( ($value-$start_value)/$scale_factor )")"
-	# int_y is the int part of y
-	int_y="$(cut -d '.' -f 1 <<<"$y")"
+	y="$(value_to_y "$value")"
+	printf -v int_y '%0.0f' "$y"
 	if [ "$value" -lt "$min" ] ; then
 		min="$value"
 	fi
@@ -270,7 +274,7 @@ while true ; do
 	# next color: next value in the array, wrapping
 	rgb="$(( (n + RGB_start) % ${#RGB[*]} ))"
 	# store the y value of the current x value (to delete it next time)
-	dot[$x]=$int_y
+	dot[$x]=$value
 	echo -ne "\e[${int_y};${x}H\e[38;2;${RGB[$rgb]}m${MARK_TIP}\e[0m"
 	disp_status "$min" "$value" "$max" "$scale_factor" "$x" "$y"
 	last_x="$x"
