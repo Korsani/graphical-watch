@@ -13,7 +13,7 @@ TICK_COLOR=184
 HLINE_COLOR=053
 RAINBOW=''
 SLEEP=2
-HEADER_SIZE=3
+HEADER_SIZE=2
 X_TICK='|'
 X_TICKS_STEP=5
 Y_TICKS_STEP=5
@@ -157,7 +157,7 @@ function clean_next() {
 		fi
 	fi
 	# (eventually) display the x tick I erase
-	disp_x_ticks "$lcenter" "$col"
+	disp_x_ticks "$lcenter" "$x"
 }
 function _usage() {
 	local bn="$(basename "$0")"
@@ -223,6 +223,14 @@ function redraw() {
 		rgb="$(( (x + RGB_start) % ${#RGB[*]} ))"
 		echo -ne "\e[${y};${x}H\e[38;2;${RGB[$rgb]}m${MARK}\e[0m"
 	done
+}
+function disp_tracers() {
+	local x="$1"
+	echo -ne "\e[$((HEADER_SIZE+1));${x}H⌄\e[$LINES;${x}H^"
+}
+function clean_tracers() {
+	local x="$1"
+	echo -ne "\e[$((HEADER_SIZE+1));${x}H \e[$LINES;${x}H "
 }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Set me at the end of the screen upon exit
@@ -320,8 +328,7 @@ while true ; do
 		_log "Set scale to $scale_factor"
 	else
 		correct_last_mark "$last_y" "$last_x" "$last_mc"
-		# Clean log line
-		_log ""
+		clean_tracers "$last_x"
 	fi
 	# next color: next value in the array, wrapping
 	rgb="$(( (n + RGB_start) % ${#RGB[*]} ))"
@@ -329,6 +336,7 @@ while true ; do
 	# store the value of the current x value (to delete it next time)
 	dot[$x]="$value"
 	echo -ne "\e[${int_y};${x}H\e[38;2;${RGB[$rgb]}m${MARK_TIP}\e[0m"
+	disp_tracers "$x"
 	if [ -n "$DUMP_FILE" ] ; then
 		jo "$(date +%s)"="$(jo command="$command" value="$value" x="$x" y="$y")" >> "$DUMP_FILE"
 	fi
