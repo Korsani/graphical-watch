@@ -127,5 +127,5 @@ Dump is made in json format. It contains enough info to fully replay a run:
 
 - bc(1), jq(1), jo(1)
 - Grafana
-- [A nice list of term codes)[https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797]
+- [A nice list of term codes](https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797)
 - [UTF8 table and search](https://unicode-table.com/fr)
