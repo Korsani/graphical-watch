@@ -29,13 +29,14 @@ Copy grwatch.sh(1) somewhere accessible by your PATH, or set PATH so that it fin
 	-l : set lower bound
 	-m : use that one-char string to display dot
 	-n : sleep that seconds between each value read. May be decimal. Default is 2s
+	-o : dump (append) each value in the given json
 	-r : rainbow mode.
 	-s : scale. One line height in the term will count for that many values. Set to < 1 to zoom in, > 1 to zoom out. Default is 1 (no zoom).
 	-t : display that string in status bar instead of the command
 	-u : set upper bound
 	-w : set the duration of a screen to that many seconds, compute -n accordingly
 
-If ```-t``` and ```-u``` are provided, ```-s``` is ignored.
+If ```-t``` and ```-u``` are provided, ```-s``` and ```-0``` are ignored.
 
 Last one of ```-n``` and ```-w``` win.
 
