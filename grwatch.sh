@@ -58,6 +58,7 @@ function preflight_check() {
 # Display a string of the last line
 function _log() {
 	echo -ne "\e[$LINES;1H$1\e[0K"
+	(sleep 2 ; echo -en "\e[${LINES};1H\e[2K") &
 }
 # Return true if $1 is a float
 function is_float() {
@@ -306,7 +307,6 @@ if [ -n "$RAINBOW" ] ; then
 	_log "Generating rainbow table..."
 	RGB=( $(generate_rainbow 15) )
 	RGB_start=$(( ( RANDOM * ${#RGB[*]} ) / 32768 ))	# I'll start somewhere random
-	_log ""
 else
 	RGB=( $MARK_COLOR )
 	RGB_start=0
@@ -334,7 +334,7 @@ while true ; do
 	if [ 1 -eq "$(bc<<<"$value > $max")" ] ; then
 		max="$value"
 	fi
-	if [ "$int_y" -lt "$HEADER_SIZE" ] || [ "$int_y" -gt "$((LINES-1))" ] ; then
+	if [ "$int_y" -le "$HEADER_SIZE" ] || [ "$int_y" -ge "$LINES" ] ; then
 		scale_factor="$(bc <<<"scale=2;($value-($start_value))/($LINES-$HEADER_SIZE-$lcenter)" | tr -d '-' )"
 		clean_screen
 		redraw "$col"
