@@ -114,7 +114,6 @@ function disp_y_ticks() {
 	fi
 	for l in ${ticks[*]}; do
 		echo -ne "\e[$l;1H"
-		#printf "%0.01f" "$(value_to_y "$l")"
 		printf "%0.01f" "$(bc<<<"$start_value-(($l-$lcenter)*$scale_factor)")"
 	done
 	echo -ne "\e[0m"
@@ -205,7 +204,7 @@ function correct_last_mark() {
 function disp_status() {
 	local min=$1 value=$2 max=$3 scale_factor=$4 x=$5 y=$6
 	# status line
-	printf "\e[2;1H\e[1;4;37m%i\e[0m m=%i M=%i w=%0.0fs tick=%0.01fs s=%0.01fx x=%i y=%0.02f\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y"
+	printf "\e[2;1H\e[1;4;37m%0.2f\e[0m m=%0.2f M=%0.2f w=%0.0fs tick=%0.01fs s=%0.01fx x=%i y=%0.02f\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y"
 	# date line
 	printf "\e[1;${DATE_COLUMNS}H%s: %s" "$HOSTNAME" "$(date '+%Y-%m-%d@%H:%M:%S')"
 }
@@ -288,17 +287,17 @@ while true ; do
 		else
 			exit 0
 		fi
-	else
-		printf -v value '%0.0f' "$value"
+	#else
+	#	printf -v value '%0.0f' "$value"
 	fi
 	x="$col"
 	# value => line (eventualy a float value)
 	y="$(value_to_y "$value")"
 	printf -v int_y '%0.0f' "$y"
-	if [ "$value" -lt "$min" ] ; then
+	if [ 1 -eq "$(bc<<<"$value < $min")" ] ; then
 		min="$value"
 	fi
-	if [ "$value" -gt "$max" ] ; then
+	if [ 1 -eq "$(bc<<<"$value > $max")" ] ; then
 		max="$value"
 	fi
 	if [ "$int_y" -lt "$HEADER_SIZE" ] || [ "$int_y" -gt "$((LINES-1))" ] ; then
