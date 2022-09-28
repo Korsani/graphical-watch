@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 set -eu
 LANG=C
-# Evidemment...
-case $(uname) in
-	Darwin)	MARK_TIP='⬥';;
-	*)		MARK_TIP='◆';;
-esac
+LC_ALL=C
 # █■⯀▪·
-MARK='⯀'
+# Of course...
+case $(uname) in
+	Darwin)	MARK_TIP='⬥'; MARK='■' ;;
+	*)		MARK_TIP='◆'; MARK='⯀' ;;
+esac
 MARK_COLOR="255;255;255"
 TICK_COLOR=184
 HLINE_COLOR=053
 RAINBOW=''
 SLEEP=2
-HEADER_SIZE=3
+HEADER_SIZE=2
+X_TICK='|'
 X_TICKS_STEP=5
 Y_TICKS_STEP=5
 scale_factor=1
@@ -28,31 +29,43 @@ lcenter="$(( LINES-(LINES-HEADER_SIZE)/2))"
 # absolute position of y ticks
 Y_TICKS_LABSPOS=( $(seq $(( (lcenter+(-LINES+HEADER_SIZE*Y_TICKS_STEP)/2) )) $Y_TICKS_STEP $(( (lcenter+(LINES-HEADER_SIZE*Y_TICKS_STEP)/2) )) ) )
 HOSTNAME="$(hostname)"
-DATE_COLUMNS="$((COLUMNS-19-${#HOSTNAME}-2))"
+# 2022-09-28T15:48:50+02:00
+DATE_COLUMNS="$((COLUMNS-25-${#HOSTNAME}-2))"
+START_TIME="$(date +%s)"
 command=''
 start_value=''
 last_x=''
 last_y=''
 last_mc=''
-declare -a dot
+MIN=''
+MAX=''
+DUMP_FILE=''
+declare -a dot values
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+function _check_command() {
+	while [ -n "${1:-}" ] ; do
+		if ! command -v $1 >/dev/null ; then
+			echo "Command '$1' not found" >&2
+			return 1
+		fi
+		shift
+	done
+}
 # Some checks
 function preflight_check() {
-	if ! command -v bc >/dev/null ; then
-		echo "bc(1) not found" >&2
-		return 1
-	fi
+	_check_command bc
 }
 # Display a string of the last line
 function _log() {
 	echo -ne "\e[$LINES;1H$1\e[0K"
+	(sleep 2 ; echo -en "\e[${LINES};1H\e[2K") &
 }
-# Return true if $1 is belonging to the N ensemble
-function is_int() {
+# Return true if $1 is a float
+function is_float() {
 	local v="$1"
-	[[ "$v" =~ ^[-+]?[0-9]+$ ]]
+	[[ "$v" =~ ^[-+]?[0-9]*[.,]*[0-9]+$ ]]
 }
-# Generate the rgb values of the hues of the chromatic circle, by steps of $1
+# Generate the rgb dot of the hues of the chromatic circle, by steps of $1
 # Running chromatic circle make rgb value vary this way:
 # R   G   B
 # 255 0   0
@@ -74,7 +87,7 @@ function generate_rainbow() {
 	# Way I will increment/decrement
 	local sign=1
 	local step="$1"
-	# Staring values
+	# Staring dot
 	declare -A RGB
 	RGB[r]=0 ; RGB[g]=255 ; RGB[b]=0
 	for i in $(seq 0 $(( ${#order}-1)) ) ; do	# r or g or b
@@ -121,27 +134,26 @@ function disp_x_ticks() {
 	echo -ne "\e[38;5;${HLINE_COLOR}m"
 	if [ -n "$x" ] ; then	# if I got only y, I draw all the ticks
 		for i in $(seq "${X_TICKS_STEP}" "${X_TICKS_STEP}" "${COLUMNS}") ; do
-			echo -ne "\e[$y;${i}H+"
+			echo -ne "\e[$y;${i}H${X_TICK}"
 		done
 	else	# should I REALLY put a tick?
 		if [ "$((x % X_TICKS_STEP))" -eq "0" ] ; then
-			echo -ne "\e[$y;${x}H+"
+			echo -ne "\e[$y;${x}H${X_TICK}"
 		fi
 	fi
 	echo -ne "\e[0m"
 }
-# Clean the screen
-# Print the command (or the argument given by -t) and the x axis
+# Clean the screen and draw x axis
 function clean_screen() {
-	local command="$1"
 	echo -ne "\e[2J\e[?25l"
-	printf "\e[1;1HEvery %0.0fs: %s" "$SLEEP" "${command_title:-$command}"
+	printf "\e[1;1HEvery %0.02fs: %s" "$SLEEP" "${command_title:-$command}"
 	h_line "$lcenter"
 }
 # Clean the column at (absolute) position $1
 function clean_next() {
 	local x="$1"
-	local y=${dot[$x]:-}	# do I have the coordinate of the dot here?
+	local y
+	printf -v y '%0.0f' "$( value_to_y "${dot[$x]:-}")"	# do I have the coordinate of the values here?
 	if [ -n "$y" ] ; then
 		echo -ne "\e[$y;${x}H "
 		if [ "$y" -eq "$lcenter" ] ; then	# am I on the x axis?
@@ -153,21 +165,27 @@ function clean_next() {
 		fi
 	fi
 	# (eventually) display the x tick I erase
-	disp_x_ticks "$lcenter" "$col"
+	disp_x_ticks "$lcenter" "$x"
 }
 function _usage() {
 	local bn="$(basename "$0")"
 	echo " ~ Graphical watch(1) - a.k.a Grafana in term ~"
 	echo
-	echo "$bn [ -n <interval in second> | -w <width in second> ] [ -s <scale factor> ] [ -0 <value> ] [ -r ] [ -m <mark> ] [ -t <command title> ] <\"command than returns integer\">"
+	echo "$bn [ -n <interval in second> | -w <width in second> ] [ -0 <value> ]i [ -f <file> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ [ -l <lower bound> -u <upper bound> ] | -s <scale> ] [ \"command than returns integer\" ]"
 	echo
 	echo "-0 : set the horizontal axis to that value"
+	echo "-f : dump data upon exit in that file"
+	echo "-l : set lower value"
 	echo "-m : use that one-char string to display dot"
 	echo "-n : sleep that seconds between each dot. May be decimal. Default is 2s"
+	echo "-o : dump (append) each value in the given json"
 	echo "-r : rainbow mode"
-	echo "-s : scale factor. One line height in the term will count for that many values. Set to < 1 to zoom in, > 1 to zoom out. Default is 1"
+	echo "-s : scale. One line height in the term will count for that many dot. Set to < 1 to zoom in, > 1 to zoom out. Default is 1"
 	echo "-t : display that string in status bar instead of the command"
+	echo "-u : set upper value"
 	echo "-w : set the duration of a screen to that many seconds, compute -n accordingly"
+	echo
+	echo "scale and 0 are calculated if -l and -u are provided"
 	echo
 	echo "Examples:"
 	echo "	On Linux:"
@@ -198,81 +216,146 @@ function correct_last_mark() {
 function disp_status() {
 	local min=$1 value=$2 max=$3 scale_factor=$4 x=$5 y=$6
 	# status line
-	printf "\e[2;1H\e[1;4;37m%i\e[0m m=%i M=%i tick=%0.01fs n=%0.2fs s=%0.01fx x=%i y=%0.02f\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y"
+	printf "\e[2;1H\e[1;4;37m%0.02f\e[0m m=%i M=%i w=%0.0fs tick=%0.01fs s=%0.01fx x=%i y=%0.02f\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y"
 	# date line
-	printf "\e[1;${DATE_COLUMNS}H%s: %s" "$HOSTNAME" "$(date '+%Y-%m-%d@%H:%M:%S')"
+	printf "\e[1;${DATE_COLUMNS}H%s: %s" "$HOSTNAME" "$(date -Iseconds)"
+}
+function value_to_y() {
+	local v="$1"
+	bc <<< "scale=1;$lcenter - ( ($v-$start_value)/$scale_factor )"
+}
+function redraw() {
+	local till="$1"
+	local x y
+	for x in $(seq 1 "$((till-1))") ; do
+		printf -v y '%0.0f' "$( value_to_y "${dot[$x]:-}")"	# do I have the coordinate of the values here?
+		rgb="$(( (x + RGB_start) % ${#RGB[*]} ))"
+		echo -ne "\e[${y};${x}H\e[38;2;${RGB[$rgb]}m${MARK}\e[0m"
+	done
+}
+function disp_tracers() {
+	local x="$1"
+	echo -ne "\e[$LINES;${x}H^"
+}
+function clean_tracers() {
+	local x="$1"
+	echo -ne "\e[$LINES;${x}H "
+}
+function _exit() {
+	echo -ne "\e[?25h\e[$LINES;1H\e[0m"
+	if [ -n "$DUMP_FILE" ] ; then
+		echo "Dumping to $DUMP_FILE..."
+		local data d
+		data="$(for d in "${!values[@]}" ; do
+			jo $d="${values[$d]}"
+		done | jq -cs 'add' )"
+		jo infos="$(jo -- hostname="$(hostname)" command="$command" command_title="${command_title:-}" start_time="$(date -d@$START_TIME)" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
+	fi
 }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Set me at the end of the screen upon exit
-trap 'echo -ne "\e[?25h\e[$LINES;1H"' 0
-while getopts '0:hm:n:rs:t:w:' opt ; do
+while getopts '0:f:hl:m:n:o:rs:t:u:w:' opt ; do
 	case $opt in
 		0)	start_value="${OPTARG}";;
+		f)	DUMP_FILE="${OPTARG}";;
+		h)	_usage ; exit 0;;
+		l)	MIN="$OPTARG";;
 		m)	MARK="$OPTARG";;
 		n)	SLEEP="${OPTARG}";;
-		w)	SLEEP="$( bc<<<"scale=2;$OPTARG/$COLUMNS" )";;
-		s)	scale_factor="$OPTARG";;
 		r)	RAINBOW='y';;
+		s)	scale_factor="$OPTARG";;
 		t)	command_title="$OPTARG";;
-		h)	_usage ; exit 0;;
+		u)	MAX="$OPTARG";;
+		w)	SLEEP="$( bc<<<"scale=2;$OPTARG/$COLUMNS" )";;
 	esac
 done
 preflight_check || exit 1
+if [ -n "$DUMP_FILE" ] ; then
+	_check_command jo jq || exit 1
+fi
+trap _exit 0
 WINDOW_WIDTH="$(bc<<<"$SLEEP*$COLUMNS")"
 X_TICKS_WIDTH="$(bc<<<"$X_TICKS_STEP*$SLEEP")"
 col=1
 n=0
 shift $((OPTIND-1))
 # Tiny hack to have the "read-from-stdin" command
-command="${1:-read -r v ; echo \$v}"
-if [ -z "$start_value" ] ; then
-	start_value="$(eval "$command")"
+if [ -z "${1:-}" ] ; then
+	command="read -r v ; echo \$v"
+	command_title="${command_title:-<stdin>}"
+else
+	command="${1}"
 fi
+if [ -n "$MIN" ] && [ -n "$MAX" ] ; then
+	if [ "$MIN" -lt "$MAX" ] ; then
+		printf -v start_value '%0.0f' "$(bc <<<"scale=2;($MAX+($MIN))/2")"
+		scale_factor="$( bc <<<"scale=2;($MAX-($MIN))/$LINES" )"
+	else
+		echo "-l MUST BE strictly lower that -u" >&2
+		exit 2
+	fi
+fi
+# Read value while I don't have an int
+while ! is_float "$start_value" ; do
+	start_value="$(sh -c "$command")"
+done
+printf -v start_value '%0.0f' "$start_value"
 min=$start_value
 max=$start_value
-if ! is_int "$start_value" ; then
-	echo "Start value '$start_value' is not even an int..." >&2
-	exit 2
-fi
-clean_screen "$command"
+clean_screen
 if [ -n "$RAINBOW" ] ; then
 	_log "Generating rainbow table..."
 	RGB=( $(generate_rainbow 15) )
 	RGB_start=$(( ( RANDOM * ${#RGB[*]} ) / 32768 ))	# I'll start somewhere random
-	_log ""
 else
 	RGB=( $MARK_COLOR )
 	RGB_start=0
 fi
 while true ; do
-	value="$(eval "$command")"
-	if ! is_int "$value" ; then
-		asc="$(printf "%02.2X" "'$value'")"
+	# Floating value
+	fvalue="$(sh -c "$command")"
+	if ! is_float "$fvalue" ; then
+		asc="$(printf "%02.2X" "'$fvalue'")"
 		if [ "$asc" -ne "27" ] ; then				# if it's not EOF
-			_log "'$value' (0x$asc) is not an int"
+			_log "'$fvalue' (0x$asc) is not at least a float"
 			continue
 		else
 			exit 0
 		fi
+	else
+		printf -v value '%0.0f' "$fvalue"
 	fi
 	x="$col"
-	# value => line (eventualy floating value)
-	y="$(bc <<< "scale=1;$lcenter - ( ($value-$start_value)/$scale_factor )")"
-	# int_y is the int part of y
-	int_y="$(cut -d '.' -f 1 <<<"$y")"
+	# value => line (eventualy a float value)
+	y="$(value_to_y "$fvalue")"
+	printf -v int_y '%0.0f' "$y"
 	if [ "$value" -lt "$min" ] ; then
 		min="$value"
 	fi
 	if [ "$value" -gt "$max" ] ; then
 		max="$value"
 	fi
-	correct_last_mark "$last_y" "$last_x" "$last_mc"
+	if [ "$int_y" -le "$HEADER_SIZE" ] || [ "$int_y" -ge "$LINES" ] ; then
+		scale_factor="$(bc <<<"scale=2;($value-($start_value))/($LINES-$HEADER_SIZE-$lcenter)" | tr -d '-' )"
+		clean_screen
+		redraw "$col"
+		disp_status "$min" "$fvalue" "$max" "$scale_factor" "$x" "$y"
+		y="$(value_to_y "$value")"
+		printf -v int_y '%0.0f' "$y"
+		_log "Set scale to $scale_factor"
+	else
+		correct_last_mark "$last_y" "$last_x" "$last_mc"
+		clean_tracers "$last_x"
+	fi
 	# next color: next value in the array, wrapping
 	rgb="$(( (n + RGB_start) % ${#RGB[*]} ))"
-	# store the y value of the current x value (to delete it next time)
-	dot[$x]=$int_y
+	# store the value of the current x value (to delete it next time)
+	dot[$x]="$value"
+	# same, but keep track of all datas
+	values[$n]="$fvalue"
 	echo -ne "\e[${int_y};${x}H\e[38;2;${RGB[$rgb]}m${MARK_TIP}\e[0m"
-	disp_status "$min" "$value" "$max" "$scale_factor" "$x" "$y"
+	disp_tracers "$x"
+	disp_status "$min" "$fvalue" "$max" "$scale_factor" "$x" "$y"
 	last_x="$x"
 	last_y="$int_y"
 	last_mc="${RGB[$rgb]}"
