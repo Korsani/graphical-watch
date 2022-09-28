@@ -60,7 +60,7 @@ Act like Grafana:
 	# Exit by ctrl+c or by sending EOF to stdin
 
 More examples:
-	
+
 	# Memory usage:
 	$ grwatch.sh -n 0.5 -s 100 'free | grep -i mem | awk "{print \$3}"'
 
@@ -114,6 +114,7 @@ Dump is made in json format. It contains enough info to fully replay a run:
 
 - Allow y axis to be elsewhere than in the middle
 - Improve speed
+- Find why my utf8 dot is not well displayed on some terminal ('kitty' is ok, not iTerm2, not Gnome Terminal)
 
 # Made with
 
