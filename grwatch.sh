@@ -228,15 +228,15 @@ trap 'echo -ne "\e[?25h\e[$LINES;1H"' 0
 while getopts '0:hl:m:n:rs:t:u:w:' opt ; do
 	case $opt in
 		0)	start_value="${OPTARG}";;
-		m)	MARK="$OPTARG";;
-		n)	SLEEP="${OPTARG}";;
-		w)	SLEEP="$( bc<<<"scale=2;$OPTARG/$COLUMNS" )";;
-		s)	scale_factor="$OPTARG";;
-		r)	RAINBOW='y';;
-		t)	command_title="$OPTARG";;
 		h)	_usage ; exit 0;;
 		l)	MIN="$OPTARG";;
+		m)	MARK="$OPTARG";;
+		n)	SLEEP="${OPTARG}";;
+		r)	RAINBOW='y';;
+		s)	scale_factor="$OPTARG";;
+		t)	command_title="$OPTARG";;
 		u)	MAX="$OPTARG";;
+		w)	SLEEP="$( bc<<<"scale=2;$OPTARG/$COLUMNS" )";;
 	esac
 done
 preflight_check || exit 1
@@ -283,7 +283,7 @@ while true ; do
 	if ! is_float "$value" ; then
 		asc="$(printf "%02.2X" "'$value'")"
 		if [ "$asc" -ne "27" ] ; then				# if it's not EOF
-			_log "'$value' (0x$asc) is not a float"
+			_log "'$value' (0x$asc) is not at least a float"
 			continue
 		else
 			exit 0
@@ -311,10 +311,12 @@ while true ; do
 		_log "Set scale to $scale_factor"
 	else
 		correct_last_mark "$last_y" "$last_x" "$last_mc"
+		# Clean log line
 		_log ""
 	fi
 	# next color: next value in the array, wrapping
 	rgb="$(( (n + RGB_start) % ${#RGB[*]} ))"
+	#rgb="$(bc<<<"($n + $RGB_start) % $nRGB")"
 	# store the value of the current x value (to delete it next time)
 	dot[$x]="$value"
 	echo -ne "\e[${int_y};${x}H\e[38;2;${RGB[$rgb]}m${MARK_TIP}\e[0m"
