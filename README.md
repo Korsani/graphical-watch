@@ -8,12 +8,15 @@ This pure shell script is for you!
 
 Unlike the nice [gwatch](https://github.com/robertely/gwatch), it is pure shell, and colored, and can take from stdin, and has more options.
 
+	grwatch.sh -r -w 3600 -l 35 -u 45 "/opt/vc/bin/vcgencmd measure_temp | tr -cd '[.0-9]'"
+
 # Starting
 
 ## Pre-requisite
 
 - A fairly recent bash(1)
 - bc(1)
+- Eventualy jq(1) and jo(1)
 
 ## Installation
 
@@ -23,9 +26,10 @@ Copy grwatch.sh(1) somewhere accessible by your PATH, or set PATH so that it fin
 
 ## Options
 
-	grwatch.sh [ -n <interval in second> | -w <width in second> ] [ -0 <value> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ [ -l <lower bound> -u <upper bound> ] | -s <scale> ] [ "command than returns integer" ]
+	grwatch.sh [ -n <interval in second> | -w <width in second> ] [ -0 <value> ] [ -f <file> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ [ -l <lower bound> -u <upper bound> ] | -s <scale> ] [ "command than returns integer" ]
 
 	-0 : set the horizontal axis to that value instead of the first one returned by the command (or by stdin) (or by the mean of -l and -u)
+	-f : dump data in that file upon exit
 	-l : set lower bound
 	-m : use that one-char string to display dot
 	-n : sleep that seconds between each value read. May be decimal. Default is 2s
@@ -96,7 +100,15 @@ Hostname and date are shown on upper right corner.
 
 Scale is recalculated if value exceed screen bounds. Graph is redraw with the new scale.
 
-Starting value is kept. That means that graph is not recentered, juste zoomed in or out.
+Starting value is kept. That means that graph is not recentered, just zoomed in or out.
+
+## Dump
+
+Dump is made in json format. It contains enough info to fully replay a run:
+
+	for i in {0..180} ; do LANG=C printf '%0.0f\n' "$(bc -l <<<"scale=2;20*s($i*(2*6.28)/360)")" ; done | grwatch.sh -n 0 -r -m '~' -f sine.json
+	jq '.infos' sine.json
+	jq '.data | .[]' sine.json | grwatch.sh
 
 # To do
 
@@ -112,7 +124,7 @@ Starting value is kept. That means that graph is not recentered, juste zoomed in
 
 # See also
 
-- bc(1)
+- bc(1), jq(1), jo(1)
 - Grafana
 - [A nice list of term codes)[https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797]
 - [UTF8 table and search](https://unicode-table.com/fr)
