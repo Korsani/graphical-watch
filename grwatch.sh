@@ -216,7 +216,7 @@ function correct_last_mark() {
 function disp_status() {
 	local min=$1 value=$2 max=$3 scale_factor=$4 x=$5 y=$6
 	# status line
-	printf "\e[2;1H\e[1;4;37m%0.2f\e[0m m=%0.2f M=%0.2f w=%0.0fs tick=%0.01fs s=%0.01fx x=%i y=%0.02f\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y"
+	printf "\e[2;1H\e[1;4;37m%0.02f\e[0m m=%i M=%i w=%0.0fs tick=%0.01fs s=%0.01fx x=%i y=%0.02f\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y"
 	# date line
 	printf "\e[1;${DATE_COLUMNS}H%s: %s" "$HOSTNAME" "$(date -Iseconds)"
 }
@@ -249,7 +249,7 @@ function _exit() {
 		data="$(for d in "${!values[@]}" ; do
 			jo $d="${values[$d]}"
 		done | jq -cs 'add' )"
-		jo infos="$(jo hostname="$(hostname)" command="$command" command_title="${command_title:-}" start_time="$(date -d@$START_TIME)" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -- -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
+		jo infos="$(jo -- hostname="$(hostname)" command="$command" command_title="${command_title:-}" start_time="$(date -d@$START_TIME)" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
 	fi
 }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -312,33 +312,34 @@ else
 	RGB_start=0
 fi
 while true ; do
-	value="$(sh -c "$command")"
-	if ! is_float "$value" ; then
-		asc="$(printf "%02.2X" "'$value'")"
+	# Floating value
+	fvalue="$(sh -c "$command")"
+	if ! is_float "$fvalue" ; then
+		asc="$(printf "%02.2X" "'$fvalue'")"
 		if [ "$asc" -ne "27" ] ; then				# if it's not EOF
-			_log "'$value' (0x$asc) is not at least a float"
+			_log "'$fvalue' (0x$asc) is not at least a float"
 			continue
 		else
 			exit 0
 		fi
-	#else
-	#	printf -v value '%0.0f' "$value"
+	else
+		printf -v value '%0.0f' "$fvalue"
 	fi
 	x="$col"
 	# value => line (eventualy a float value)
-	y="$(value_to_y "$value")"
+	y="$(value_to_y "$fvalue")"
 	printf -v int_y '%0.0f' "$y"
-	if [ 1 -eq "$(bc<<<"$value < $min")" ] ; then
+	if [ "$value" -lt "$min" ] ; then
 		min="$value"
 	fi
-	if [ 1 -eq "$(bc<<<"$value > $max")" ] ; then
+	if [ "$value" -gt "$max" ] ; then
 		max="$value"
 	fi
 	if [ "$int_y" -le "$HEADER_SIZE" ] || [ "$int_y" -ge "$LINES" ] ; then
 		scale_factor="$(bc <<<"scale=2;($value-($start_value))/($LINES-$HEADER_SIZE-$lcenter)" | tr -d '-' )"
 		clean_screen
 		redraw "$col"
-		disp_status "$min" "$value" "$max" "$scale_factor" "$x" "$y"
+		disp_status "$min" "$fvalue" "$max" "$scale_factor" "$x" "$y"
 		y="$(value_to_y "$value")"
 		printf -v int_y '%0.0f' "$y"
 		_log "Set scale to $scale_factor"
@@ -348,14 +349,13 @@ while true ; do
 	fi
 	# next color: next value in the array, wrapping
 	rgb="$(( (n + RGB_start) % ${#RGB[*]} ))"
-	#rgb="$(bc<<<"($n + $RGB_start) % $nRGB")"
 	# store the value of the current x value (to delete it next time)
 	dot[$x]="$value"
 	# same, but keep track of all datas
-	values[$n]="$value"
+	values[$n]="$fvalue"
 	echo -ne "\e[${int_y};${x}H\e[38;2;${RGB[$rgb]}m${MARK_TIP}\e[0m"
 	disp_tracers "$x"
-	disp_status "$min" "$value" "$max" "$scale_factor" "$x" "$y"
+	disp_status "$min" "$fvalue" "$max" "$scale_factor" "$x" "$y"
 	last_x="$x"
 	last_y="$int_y"
 	last_mc="${RGB[$rgb]}"
