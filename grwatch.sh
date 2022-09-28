@@ -145,7 +145,7 @@ function disp_x_ticks() {
 # Clean the screen and draw x axis
 function clean_screen() {
 	echo -ne "\e[2J\e[?25l"
-	printf "\e[1;1HEvery %0.0fs: %s" "$SLEEP" "${command_title:-$command}"
+	printf "\e[1;1HEvery %0.02fs: %s" "$SLEEP" "${command_title:-$command}"
 	h_line "$lcenter"
 }
 # Clean the column at (absolute) position $1
