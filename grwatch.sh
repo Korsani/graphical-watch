@@ -20,17 +20,19 @@ Y_TICKS_STEP=5
 scale_factor=1
 export LINES="$(tput lines)"
 export COLUMNS="$(tput cols)"
+export PS4='- $LINENO] '
 # y ticks position relative to center
 Y_TICKS_RELPOS=( $(seq $(( (-LINES+HEADER_SIZE*Y_TICKS_STEP)/2 )) $Y_TICKS_STEP $(( (LINES-HEADER_SIZE*Y_TICKS_STEP)/2 )) ) )
 # size of a tick label, in char
 Y_TICKS_STR_LEN="$(wc -c <<< "${Y_TICKS_RELPOS[-1]}" )"
 # central line position
 lcenter="$(( LINES-(LINES-HEADER_SIZE)/2))"
+hcenter="$((COLUMNS/2))"
 # absolute position of y ticks
 Y_TICKS_LABSPOS=( $(seq $(( (lcenter+(-LINES+HEADER_SIZE*Y_TICKS_STEP)/2) )) $Y_TICKS_STEP $(( (lcenter+(LINES-HEADER_SIZE*Y_TICKS_STEP)/2) )) ) )
 HOSTNAME="$(hostname)"
 # 2022-09-28T15:48:50+02:00
-DATE_COLUMNS="$((COLUMNS-25-${#HOSTNAME}-2))"
+DATE_COLUMNS="$((COLUMNS-25-${#HOSTNAME}-1))"
 START_TIME="$(date +%s)"
 command=''
 start_value=''
@@ -57,7 +59,7 @@ function preflight_check() {
 }
 # Display a string of the last line
 function _log() {
-	echo -ne "\e[$LINES;1H$1\e[0K"
+	echo -ne "\e[$LINES;1H$1\e[0K\e[0m"
 	(sleep 2 ; echo -en "\e[${LINES};1H\e[2K") &
 }
 # Return true if $1 is a float
@@ -174,7 +176,7 @@ function _usage() {
 	echo "$bn [ -n <interval in second> | -w <width in second> ] [ -0 <value> ]i [ -f <file> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ [ -l <lower bound> -u <upper bound> ] | -s <scale> ] [ \"command than returns integer\" ]"
 	echo
 	echo "-0 : set the horizontal axis to that value"
-	echo "-f : dump data upon exit in that file"
+	echo "-f : dump data in that file upon exit or when SIGHUP is received"
 	echo "-l : set lower value"
 	echo "-m : use that one-char string to display dot"
 	echo "-n : sleep that seconds between each dot. May be decimal. Default is 2s"
@@ -216,7 +218,8 @@ function correct_last_mark() {
 function disp_status() {
 	local min=$1 value=$2 max=$3 scale_factor=$4 x=$5 y=$6
 	# status line
-	printf "\e[2;1H\e[1;4;37m%0.02f\e[0m m=%i M=%i w=%0.0fs tick=%0.01fs s=%0.01fx x=%i y=%0.02f\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y"
+	printf "\e[2;1Hm=%i M=%i wdith=%0.0fs tick=%0.01fs scale=%0.01fx x=%i y=%0.02f file=%s pid=%i\e[0K" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y" "${DUMP_FILE:-<none>}" "$$"
+	printf "\e[1;${hcenter}H\e[1;4;37m%0.02f\e[0m " "$value"
 	# date line
 	printf "\e[1;${DATE_COLUMNS}H%s: %s" "$HOSTNAME" "$(date -Iseconds)"
 }
@@ -241,37 +244,42 @@ function clean_tracers() {
 	local x="$1"
 	echo -ne "\e[$LINES;${x}H "
 }
+function _dump() {
+	_log "Dumping to $DUMP_FILE..."
+	local data d
+	data="$(for d in "${!values[@]}" ; do
+		jo $d="${values[$d]}"
+	done | jq -cs 'add' )"
+	jo infos="$(jo -- hostname="$(hostname)" command="$command" command_title="${command_title:-}" pid="$$" start_time="$(date -d@$START_TIME)" start_time_ts="$START_TIME" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
+}
 function _exit() {
+	# cursor visible and set me at the end of the screen
 	echo -ne "\e[?25h\e[$LINES;1H\e[0m"
 	if [ -n "$DUMP_FILE" ] ; then
-		echo "Dumping to $DUMP_FILE..."
-		local data d
-		data="$(for d in "${!values[@]}" ; do
-			jo $d="${values[$d]}"
-		done | jq -cs 'add' )"
-		jo infos="$(jo -- hostname="$(hostname)" command="$command" command_title="${command_title:-}" start_time="$(date -d@$START_TIME)" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
+		_dump
 	fi
 }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Set me at the end of the screen upon exit
-while getopts '0:f:hl:m:n:o:rs:t:u:w:' opt ; do
-	case $opt in
-		0)	start_value="${OPTARG}";;
+while getopts '0:f:hil:m:n:o:rs:t:u:w:' opt ; do
+	case $opt in		# Refactor this, please
+		0)	is_float "$OPTARG" && start_value="${OPTARG}";;
 		f)	DUMP_FILE="${OPTARG}";;
 		h)	_usage ; exit 0;;
-		l)	MIN="$OPTARG";;
+		i)	IGNORE_EMPTY_VALUES='y';;
+		l)	is_float "$OPTARG" && MIN="$OPTARG";;
 		m)	MARK="$OPTARG";;
-		n)	SLEEP="${OPTARG}";;
+		n)	is_float "$OPTARG" && SLEEP="${OPTARG}";;
 		r)	RAINBOW='y';;
-		s)	scale_factor="$OPTARG";;
+		s)	is_float "$OPTARG" && scale_factor="$OPTARG";;
 		t)	command_title="$OPTARG";;
-		u)	MAX="$OPTARG";;
-		w)	SLEEP="$( bc<<<"scale=2;$OPTARG/$COLUMNS" )";;
+		u)	is_float "$OPTARG" && MAX="$OPTARG";;
+		w)	is_float "$OPTARG" && SLEEP="$( bc<<<"scale=2;$OPTARG/$COLUMNS" )";;
 	esac
 done
 preflight_check || exit 1
 if [ -n "$DUMP_FILE" ] ; then
 	_check_command jo jq || exit 1
+	trap _dump 1
 fi
 trap _exit 0
 WINDOW_WIDTH="$(bc<<<"$SLEEP*$COLUMNS")"
@@ -320,6 +328,7 @@ while true ; do
 			_log "'$fvalue' (0x$asc) is not at least a float"
 			continue
 		else
+			echo "Got empty value"
 			exit 0
 		fi
 	else
