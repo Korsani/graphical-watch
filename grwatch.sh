@@ -248,9 +248,9 @@ function _dump() {
 	_log "Dumping to $DUMP_FILE..."
 	local data d
 	data="$(for d in "${!values[@]}" ; do
-		jo $d="${values[$d]}"
+		jo -a "${values[$d]}"
 	done | jq -cs 'add' )"
-	jo infos="$(jo -- hostname="$(hostname)" command="$command" command_title="${command_title:-}" pid="$$" start_time="$(date -d@$START_TIME)" start_time_ts="$START_TIME" lines="$LINES" columns="$COLUMNS" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
+	jo infos="$(jo -- dump_version=1 hostname="$(hostname)" command="$command" command_title="${command_title:-}" pid="$$" start_time="$(date -d@$START_TIME)" start_time_ts="$START_TIME" lines="$LINES" columns="$COLUMNS" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
 }
 function _exit() {
 	# cursor visible and set me at the end of the screen
