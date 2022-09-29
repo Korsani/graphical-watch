@@ -29,7 +29,7 @@ Copy grwatch.sh(1) somewhere accessible by your PATH, or set PATH so that it fin
 	grwatch.sh [ -n <interval in second> | -w <width in second> ] [ -0 <value> ] [ -f <file> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ [ -l <lower bound> -u <upper bound> ] | -s <scale> ] [ "command than returns integer" ]
 
 	-0 : set the horizontal axis to that value instead of the first one returned by the command (or by stdin) (or by the mean of -l and -u)
-	-f : dump data in that file upon exit
+	-f : dump data in that file upon exit or when SIGHUP is received
 	-l : set lower bound
 	-m : use that one-char string to display dot
 	-n : sleep that seconds between each value read. May be decimal. Default is 2s
@@ -80,19 +80,20 @@ More examples:
 There is a status zone on the top left of the screen, like:
 
 	Every 10s: Temp of thermal0                                                                              Cygnus: 2022-09-27@00:25:30
-	25 m:25 M:43 w=119.0s tick=2.5s n=0.50s s=1.0x x=19 y=47.00
+	25.00 m=25 M=43 width=119.0s tick=2.5s n=0.50s scale=1.0x x=19 y=47.00 file=dump.json
 
 First line is the periodicity and the command (or the string you gave with ```-t ``` )
 
 Second line is:
 
-- 25: current value, rounded to int
+- 25: current value
 - m=25: min value, rounded to int
 - M=43: max value, rounded to int
-- w=119.0s : width of the screen, in seconds
+- width=119.0s : width of the screen, in seconds
 - tick=2.5s : time between each x tick on axis
-- s=1.0x : scale
+- scale=1.0x : scale
 - x=19 y=47.00 : x and y coordinate (in column/line)
+- file=dump.json : file values will dumped to upon exit, if asked so
 
 Hostname and date are shown on upper right corner.
 
@@ -115,6 +116,7 @@ Dump is made in json format. It contains enough info to fully replay a run:
 - Allow y axis to be elsewhere than in the middle
 - Improve speed
 - Find why my utf8 dot is not well displayed on some terminal ('kitty' is ok, not iTerm2, not Gnome Terminal)
+- Handle screen resizing
 
 # Made with
 
