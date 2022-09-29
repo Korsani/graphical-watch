@@ -154,16 +154,16 @@ function clean_screen() {
 # Clean the column at (absolute) position $1
 function clean_next() {
 	local x="$1"
-	local y
-	printf -v y '%0.0f' "$( value_to_y "${dot[$x]:-}")"	# do I have the coordinate of the values here?
-	if [ -n "$y" ] ; then
-		echo -ne "\e[$y;${x}H "
-		if [ "$y" -eq "$lcenter" ] ; then	# am I on the x axis?
+	local int_y
+	int_y="${dot[$x]:-}"
+	if [ -n "$int_y" ] ; then
+		echo -ne "\e[$int_y;${x}H "
+		if [ "$int_y" -eq "$lcenter" ] ; then	# am I on the x axis?
 			echo -ne "\e[$lcenter;${x}H\e[38;5;${HLINE_COLOR}m―\e[0m"
 		fi
 		# am I on a y label?
-		if [ "$x" -lt "${Y_TICKS_STR_LEN}" ] && [[ " ${Y_TICKS_LABSPOS[*]} " =~ " $y " ]] ; then
-			disp_y_ticks "$y"
+		if [ "$x" -lt "${Y_TICKS_STR_LEN}" ] && [[ " ${Y_TICKS_LABSPOS[*]} " =~ " $int_y " ]] ; then
+			disp_y_ticks "$int_y"
 		fi
 	fi
 	# (eventually) display the x tick I erase
@@ -250,7 +250,7 @@ function _dump() {
 	data="$(for d in "${!values[@]}" ; do
 		jo $d="${values[$d]}"
 	done | jq -cs 'add' )"
-	jo infos="$(jo -- hostname="$(hostname)" command="$command" command_title="${command_title:-}" pid="$$" start_time="$(date -d@$START_TIME)" start_time_ts="$START_TIME" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
+	jo infos="$(jo -- hostname="$(hostname)" command="$command" command_title="${command_title:-}" pid="$$" start_time="$(date -d@$START_TIME)" start_time_ts="$START_TIME" lines="$LINES" columns="$COLUMNS" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
 }
 function _exit() {
 	# cursor visible and set me at the end of the screen
@@ -358,9 +358,9 @@ while true ; do
 	fi
 	# next color: next value in the array, wrapping
 	rgb="$(( (n + RGB_start) % ${#RGB[*]} ))"
-	# store the value of the current x value (to delete it next time)
-	dot[$x]="$value"
-	# same, but keep track of all datas
+	# store position of the dot (to delete it next time)
+	dot[$x]="$int_y"
+	# keep track of all datas
 	values[$n]="$fvalue"
 	echo -ne "\e[${int_y};${x}H\e[38;2;${RGB[$rgb]}m${MARK_TIP}\e[0m"
 	disp_tracers "$x"
@@ -370,6 +370,6 @@ while true ; do
 	last_mc="${RGB[$rgb]}"
 	clean_next "$(( 1 + (col+1) % COLUMNS))"
 	sleep "$SLEEP"
-	col=$(( 1 + (col % COLUMNS) ))
+	col="$(( 1 + (col % COLUMNS) ))"
 	((n+=1))
 done
