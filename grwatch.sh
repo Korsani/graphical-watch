@@ -27,11 +27,12 @@ Y_TICKS_RELPOS=( $(seq $(( (-LINES+HEADER_SIZE*Y_TICKS_STEP)/2 )) $Y_TICKS_STEP 
 Y_TICKS_STR_LEN="$(wc -c <<< "${Y_TICKS_RELPOS[-1]}" )"
 # central line position
 lcenter="$(( LINES-(LINES-HEADER_SIZE)/2))"
+hcenter="$((COLUMNS/2))"
 # absolute position of y ticks
 Y_TICKS_LABSPOS=( $(seq $(( (lcenter+(-LINES+HEADER_SIZE*Y_TICKS_STEP)/2) )) $Y_TICKS_STEP $(( (lcenter+(LINES-HEADER_SIZE*Y_TICKS_STEP)/2) )) ) )
 HOSTNAME="$(hostname)"
 # 2022-09-28T15:48:50+02:00
-DATE_COLUMNS="$((COLUMNS-25-${#HOSTNAME}-2))"
+DATE_COLUMNS="$((COLUMNS-25-${#HOSTNAME}-1))"
 START_TIME="$(date +%s)"
 command=''
 start_value=''
@@ -217,7 +218,8 @@ function correct_last_mark() {
 function disp_status() {
 	local min=$1 value=$2 max=$3 scale_factor=$4 x=$5 y=$6
 	# status line
-	printf "\e[2;1H\e[1;4;37m%0.02f\e[0m m=%i M=%i wdith=%0.0fs tick=%0.01fs scale=%0.01fx x=%i y=%0.02f file=%s\e[0K" "$value" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y" "${DUMP_FILE:-<none>}"
+	printf "\e[2;1Hm=%i M=%i wdith=%0.0fs tick=%0.01fs scale=%0.01fx x=%i y=%0.02f file=%s pid=%i\e[0K" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y" "${DUMP_FILE:-<none>}" "$$"
+	printf "\e[1;${hcenter}H\e[1;4;37m%0.02f\e[0m " "$value"
 	# date line
 	printf "\e[1;${DATE_COLUMNS}H%s: %s" "$HOSTNAME" "$(date -Iseconds)"
 }
@@ -248,7 +250,7 @@ function _dump() {
 	data="$(for d in "${!values[@]}" ; do
 		jo $d="${values[$d]}"
 	done | jq -cs 'add' )"
-	jo infos="$(jo -- hostname="$(hostname)" command="$command" command_title="${command_title:-}" start_time="$(date -d@$START_TIME)" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
+	jo infos="$(jo -- hostname="$(hostname)" command="$command" command_title="${command_title:-}" pid="$$" start_time="$(date -d@$START_TIME)" start_time_ts="$START_TIME" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
 }
 function _exit() {
 	# cursor visible and set me at the end of the screen

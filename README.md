@@ -80,7 +80,7 @@ More examples:
 There is a status zone on the top left of the screen, like:
 
 	Every 10s: Temp of thermal0                                                                              Cygnus: 2022-09-27@00:25:30
-	25.00 m=25 M=43 width=119.0s tick=2.5s n=0.50s scale=1.0x x=19 y=47.00 file=dump.json
+	25.00 m=25 M=43 width=119.0s tick=2.5s n=0.50s scale=1.0x x=19 y=47.00 file=dump.json pid=666
 
 First line is the periodicity and the command (or the string you gave with ```-t ``` )
 
@@ -94,6 +94,7 @@ Second line is:
 - scale=1.0x : scale
 - x=19 y=47.00 : x and y coordinate (in column/line)
 - file=dump.json : file values will dumped to upon exit, if asked so
+- pid=666 : pid of running instance (useful for kill -1)
 
 Hostname and date are shown on upper right corner.
 
