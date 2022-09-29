@@ -8,7 +8,9 @@ This pure shell script is for you!
 
 Unlike the nice [gwatch](https://github.com/robertely/gwatch), it is pure shell, and colored, and can take from stdin, and has more options.
 
-	grwatch.sh -r -w 3600 -l 35 -u 45 "/opt/vc/bin/vcgencmd measure_temp | tr -cd '[.0-9]'"
+	grwatch.sh -n 1 -r -l 100 -u 250 -t "Ping to google, 100x" "ping -c 1 www.google.com | grep 'time=' | awk '{print \$8}' | tr -cd '[0-9]'"
+
+![Ping to google, zoomed x100](/doc/ping-to-google.png)
 
 # Starting
 
@@ -72,6 +74,9 @@ More examples:
 
 	# Monitor number of php-fpm processes on a 1-hour graph:
 	$ grwatch.sh -w 3600 -r -m '-' 'pgrep -c php-fpm'
+
+	# Monitor your ping, values are x100 
+	$ grwatch.sh "ping -c 1 www.google.com | grep 'time=' | awk '{print \$8}' | tr -cd '[0-9]'"
 
 # Considerations
 
