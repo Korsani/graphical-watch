@@ -29,8 +29,10 @@ Copy grwatch.sh(1) somewhere accessible by your PATH, or set PATH so that it fin
 ## Options
 
 	grwatch.sh [ -n <interval in second> | -w <width in second> ] [ -0 <value> ] [ -f <file> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ [ -l <lower bound> -u <upper bound> ] | -s <scale> ] [ "command than returns integer" ]
+	grwatch.sh -c -f <file>
 
 	-0 : set the horizontal axis to that value instead of the first one returned by the command (or by stdin) (or by the mean of -l and -u)
+	-c : load data and options from the -f file generated in a previous run, then run
 	-f : dump data in that file upon exit or when SIGHUP is received
 	-l : set lower bound
 	-m : use that one-char string to display dot
@@ -75,8 +77,11 @@ More examples:
 	# Monitor number of php-fpm processes on a 1-hour graph:
 	$ grwatch.sh -w 3600 -r -m '-' 'pgrep -c php-fpm'
 
-	# Monitor your ping, values are x100 
-	$ grwatch.sh "ping -c 1 www.google.com | grep 'time=' | awk '{print \$8}' | tr -cd '[0-9]'"
+	# Monitor your ping, values are x100, dump data upon exit
+	$ grwatch.sh -f ping-google.json "ping -c 1 www.google.com | grep 'time=' | awk '{print \$8}' | tr -cd '[0-9]'"
+
+	# Continue the previous run
+	$ grwatch.sh -c -f ping-google.json
 
 # Considerations
 
@@ -117,6 +122,8 @@ Dump is made in json format. It contains enough info to fully replay a run:
 	jq '.infos' sine.json
 	jq '.data | .[]' sine.json | grwatch.sh
 
+If you interrupted a run you made with -f and want to relaunch it without loosing previous data, run with ```-c```.
+
 # To do
 
 - Allow y axis to be elsewhere than in the middle
@@ -129,6 +136,7 @@ Dump is made in json format. It contains enough info to fully replay a run:
 - bash(1)
 - bc(1)
 - shellcheck(1)
+- bits of jq(1) and jo(1)
 - love, patience, and colors.
 
 # See also
