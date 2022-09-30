@@ -11,13 +11,13 @@ esac
 MARK_COLOR="255;255;255"
 TICK_COLOR=184
 HLINE_COLOR=053
-RAINBOW=''
 SLEEP_DEFAULT=2
+scale_factor_default=1
 HEADER_SIZE=2
 X_TICK='|'
 X_TICKS_STEP=5
 Y_TICKS_STEP=5
-scale_factor_default=1
+KEEP_LOG_FILE='/tmp/.grwatch_keep-log'
 export LINES="$(tput lines)"
 export COLUMNS="$(tput cols)"
 export PS4='- $LINENO] '
@@ -34,6 +34,7 @@ HOSTNAME="$(hostname)"
 # 2022-09-28T15:48:50+02:00
 DATE_COLUMNS="$((COLUMNS-25-${#HOSTNAME}-1))"
 START_TIME="$(date +%s)"
+RAINBOW=''
 command=''
 start_value=''
 last_x=''
@@ -61,7 +62,8 @@ function preflight_check() {
 # Display a string of the last line
 function _log() {
 	echo -ne "\e[$LINES;1H$1\e[0K\e[0m"
-	(sleep 2 ; echo -en "\e[${LINES};1H\e[2K") &
+	# If I'm asked to keep log message a bit longer...
+	(sleep 2 ; while [ -e "$KEEP_LOG_FILE" ] ; do sleep 1 ; done ; echo -en "\e[${LINES};1H\e[2K" ) &
 }
 # Return true if $1 is a float
 function is_float() {
@@ -248,12 +250,13 @@ function clean_tracers() {
 	echo -ne "\e[$LINES;${x}H "
 }
 function _dump() {
-	_log "Dumping to $DUMP_FILE..."
+	_log "Dumping to $DUMP_FILE..." ; touch "$KEEP_LOG_FILE"
 	local data d
 	data="$(for d in "${!values[@]}" ; do
 		jo -a "${values[$d]}"
 	done | jq -cs 'add' )"
 	jo infos="$(jo -- dump_version=1 hostname="$(hostname)" command="$command" command_title="${command_title:-}" pid="$$" start_time="$(date -d@$START_TIME)" start_time_ts="$START_TIME" lines="$LINES" columns="$COLUMNS" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
+	_log "" ; rm -f "$KEEP_LOG_FILE"
 }
 function _load_data() {
 	local f="$1"
@@ -267,7 +270,7 @@ function _exit() {
 	if [ -n "$DUMP_FILE" ] ; then
 		_dump
 	fi
-	echo "Wait for jobs to finish"
+	echo "Waiting for jobs to finish"
 	wait
 }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
