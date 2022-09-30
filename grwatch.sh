@@ -42,6 +42,7 @@ last_mc=''
 MIN=''
 MAX=''
 DUMP_FILE=''
+CONTINUE=''
 declare -a dot values
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function _check_command() {
@@ -154,16 +155,16 @@ function clean_screen() {
 # Clean the column at (absolute) position $1
 function clean_next() {
 	local x="$1"
-	local y
-	printf -v y '%0.0f' "$( value_to_y "${dot[$x]:-}")"	# do I have the coordinate of the values here?
-	if [ -n "$y" ] ; then
-		echo -ne "\e[$y;${x}H "
-		if [ "$y" -eq "$lcenter" ] ; then	# am I on the x axis?
+	local int_y
+	int_y="${dot[$x]:-}"
+	if [ -n "$int_y" ] ; then
+		echo -ne "\e[$int_y;${x}H "
+		if [ "$int_y" -eq "$lcenter" ] ; then	# am I on the x axis?
 			echo -ne "\e[$lcenter;${x}H\e[38;5;${HLINE_COLOR}m―\e[0m"
 		fi
 		# am I on a y label?
-		if [ "$x" -lt "${Y_TICKS_STR_LEN}" ] && [[ " ${Y_TICKS_LABSPOS[*]} " =~ " $y " ]] ; then
-			disp_y_ticks "$y"
+		if [ "$x" -lt "${Y_TICKS_STR_LEN}" ] && [[ " ${Y_TICKS_LABSPOS[*]} " =~ " $int_y " ]] ; then
+			disp_y_ticks "$int_y"
 		fi
 	fi
 	# (eventually) display the x tick I erase
@@ -173,9 +174,11 @@ function _usage() {
 	local bn="$(basename "$0")"
 	echo " ~ Graphical watch(1) - a.k.a Grafana in term ~"
 	echo
-	echo "$bn [ -n <interval in second> | -w <width in second> ] [ -0 <value> ]i [ -f <file> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ [ -l <lower bound> -u <upper bound> ] | -s <scale> ] [ \"command than returns integer\" ]"
+	echo "$bn [ -n <interval in second> | -w <width in second> ] [ -0 <value> ] [ -f <file> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ [ -l <lower bound> -u <upper bound> ] | -s <scale> ] [ \"command than returns integer\" ]"
+	echo "$bn -c -f <file>"
 	echo
 	echo "-0 : set the horizontal axis to that value"
+	echo "-c : load data and options from the -f file generated in a previous run, then run"
 	echo "-f : dump data in that file upon exit or when SIGHUP is received"
 	echo "-l : set lower value"
 	echo "-m : use that one-char string to display dot"
@@ -250,7 +253,13 @@ function _dump() {
 	data="$(for d in "${!values[@]}" ; do
 		jo $d="${values[$d]}"
 	done | jq -cs 'add' )"
-	jo infos="$(jo -- hostname="$(hostname)" command="$command" command_title="${command_title:-}" pid="$$" start_time="$(date -d@$START_TIME)" start_time_ts="$START_TIME" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
+	jo infos="$(jo -- hostname="$(hostname)" command="$command" command_title="${command_title:-}" pid="$$" start_time="$(date -d@$START_TIME)" start_time_ts="$START_TIME" lines="$LINES" columns="$COLUMNS" scale="$scale_factor" sleep="$SLEEP" mark="$MARK" upper="$MAX" lower="$MIN" -b rainbow="$RAINBOW" )" data="$data" > "$DUMP_FILE"
+}
+function _load_data() {
+	local f="$1"
+	if [ -e "$f" ] ; then
+		jq '.data//[] | .[]' "$f"
+	fi
 }
 function _exit() {
 	# cursor visible and set me at the end of the screen
@@ -258,14 +267,15 @@ function _exit() {
 	if [ -n "$DUMP_FILE" ] ; then
 		_dump
 	fi
+	wait
 }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-while getopts '0:f:hil:m:n:o:rs:t:u:w:' opt ; do
+while getopts '0:cf:hl:m:n:o:rs:t:u:w:' opt ; do
 	case $opt in		# Refactor this, please
 		0)	is_float "$OPTARG" && start_value="${OPTARG}";;
+		c)	CONTINUE='y';;
 		f)	DUMP_FILE="${OPTARG}";;
 		h)	_usage ; exit 0;;
-		i)	IGNORE_EMPTY_VALUES='y';;
 		l)	is_float "$OPTARG" && MIN="$OPTARG";;
 		m)	MARK="$OPTARG";;
 		n)	is_float "$OPTARG" && SLEEP="${OPTARG}";;
@@ -277,32 +287,47 @@ while getopts '0:f:hil:m:n:o:rs:t:u:w:' opt ; do
 	esac
 done
 preflight_check || exit 1
+shift $((OPTIND-1))
 if [ -n "$DUMP_FILE" ] ; then
 	_check_command jo jq || exit 1
 	trap _dump 1
+fi
+if [ -n "$CONTINUE" ] && [ -e "$DUMP_FILE" ] ; then
+	echo "Load data and parameters from $DUMP_FILE"
+	values=( $(_load_data "$DUMP_FILE") )
+	command="$(jq -r '.infos.command' "$DUMP_FILE")"
+	command_title="$(jq -r '.infos.command_title//""' "$DUMP_FILE")"
+	MARK="$(jq -r '.infos.mark' "$DUMP_FILE")"
+	SLEEP="$(jq -r '.infos.sleep' "$DUMP_FILE")"
+	RAINBOW=$(jq -r '.infos.rainbow//""' "$DUMP_FILE")
+	MIN=$(jq -r '.infos.lower//""' "$DUMP_FILE")
+	MAX=$(jq -r '.infos.upper//""' "$DUMP_FILE")
+	scale_factor="$(jq -r '.infos.scale' "$DUMP_FILE")"
+	n="${#values[@]}"
+else
+	n=0
+	if [ -z "${1:-}" ] ; then
+		echo 'Read from stdin'
+		command="read -r v ; echo \$v"
+		command_title="${command_title:-<stdin>}"
+	else
+		command="${1}"
+	fi
+	if [ -n "$MIN" ] && [ -n "$MAX" ] ; then
+		if [ "$MIN" -lt "$MAX" ] ; then
+			printf -v start_value '%0.0f' "$(bc <<<"scale=2;($MAX+($MIN))/2")"
+			scale_factor="$( bc <<<"scale=2;($MAX-($MIN))/$LINES" )"
+		else
+			echo "-l MUST BE strictly lower that -u" >&2
+			exit 2
+		fi
+	fi
 fi
 trap _exit 0
 WINDOW_WIDTH="$(bc<<<"$SLEEP*$COLUMNS")"
 X_TICKS_WIDTH="$(bc<<<"$X_TICKS_STEP*$SLEEP")"
 col=1
-n=0
-shift $((OPTIND-1))
 # Tiny hack to have the "read-from-stdin" command
-if [ -z "${1:-}" ] ; then
-	command="read -r v ; echo \$v"
-	command_title="${command_title:-<stdin>}"
-else
-	command="${1}"
-fi
-if [ -n "$MIN" ] && [ -n "$MAX" ] ; then
-	if [ "$MIN" -lt "$MAX" ] ; then
-		printf -v start_value '%0.0f' "$(bc <<<"scale=2;($MAX+($MIN))/2")"
-		scale_factor="$( bc <<<"scale=2;($MAX-($MIN))/$LINES" )"
-	else
-		echo "-l MUST BE strictly lower that -u" >&2
-		exit 2
-	fi
-fi
 # Read value while I don't have an int
 while ! is_float "$start_value" ; do
 	start_value="$(sh -c "$command")"
@@ -358,9 +383,9 @@ while true ; do
 	fi
 	# next color: next value in the array, wrapping
 	rgb="$(( (n + RGB_start) % ${#RGB[*]} ))"
-	# store the value of the current x value (to delete it next time)
-	dot[$x]="$value"
-	# same, but keep track of all datas
+	# store position of the dot (to delete it next time)
+	dot[$x]="$int_y"
+	# keep track of all datas
 	values[$n]="$fvalue"
 	echo -ne "\e[${int_y};${x}H\e[38;2;${RGB[$rgb]}m${MARK_TIP}\e[0m"
 	disp_tracers "$x"
@@ -370,6 +395,6 @@ while true ; do
 	last_mc="${RGB[$rgb]}"
 	clean_next "$(( 1 + (col+1) % COLUMNS))"
 	sleep "$SLEEP"
-	col=$(( 1 + (col % COLUMNS) ))
+	col="$(( 1 + (col % COLUMNS) ))"
 	((n+=1))
 done
