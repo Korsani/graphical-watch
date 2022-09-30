@@ -17,7 +17,7 @@ HEADER_SIZE=2
 X_TICK='|'
 X_TICKS_STEP=5
 Y_TICKS_STEP=5
-scale_factor=1
+scale_factor_default=1
 export LINES="$(tput lines)"
 export COLUMNS="$(tput cols)"
 export PS4='- $LINENO] '
@@ -329,6 +329,7 @@ trap _exit 0
 WINDOW_WIDTH="$(bc<<<"$SLEEP*$COLUMNS")"
 X_TICKS_WIDTH="$(bc<<<"$X_TICKS_STEP*$SLEEP")"
 SLEEP=${SLEEP:-$SLEEP_DEFAULT}
+scale_factor=${scale_factor:-$scale_factor_default}
 col=1
 # Tiny hack to have the "read-from-stdin" command
 # Read value while I don't have an int
