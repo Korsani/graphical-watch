@@ -12,7 +12,7 @@ MARK_COLOR="255;255;255"
 TICK_COLOR=184
 HLINE_COLOR=053
 RAINBOW=''
-SLEEP=2
+SLEEP_DEFAULT=2
 HEADER_SIZE=2
 X_TICK='|'
 X_TICKS_STEP=5
@@ -267,6 +267,7 @@ function _exit() {
 	if [ -n "$DUMP_FILE" ] ; then
 		_dump
 	fi
+	echo "Wait for jobs to finish"
 	wait
 }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -297,12 +298,13 @@ if [ -n "$CONTINUE" ] && [ -e "$DUMP_FILE" ] ; then
 	values=( $(_load_data "$DUMP_FILE") )
 	command="$(jq -r '.infos.command' "$DUMP_FILE")"
 	command_title="$(jq -r '.infos.command_title//""' "$DUMP_FILE")"
-	MARK="$(jq -r '.infos.mark' "$DUMP_FILE")"
-	SLEEP="$(jq -r '.infos.sleep' "$DUMP_FILE")"
-	RAINBOW=$(jq -r '.infos.rainbow//""' "$DUMP_FILE")
-	MIN=$(jq -r '.infos.lower//""' "$DUMP_FILE")
-	MAX=$(jq -r '.infos.upper//""' "$DUMP_FILE")
-	scale_factor="$(jq -r '.infos.scale' "$DUMP_FILE")"
+	# Allow some options to be changed
+	MARK="${MARK:-$(jq -r '.infos.mark' "$DUMP_FILE")}"
+	SLEEP="${SLEEP:-$(jq -r '.infos.sleep' "$DUMP_FILE")}"
+	RAINBOW=${RAINBOW:-$(jq -r '.infos.rainbow//""' "$DUMP_FILE")}
+	MIN=${MIN:-$(jq -r '.infos.lower//""' "$DUMP_FILE")}
+	MAX=${MAX:-$(jq -r '.infos.upper//""' "$DUMP_FILE")}
+	scale_factor="${scale_factor:-$(jq -r '.infos.scale' "$DUMP_FILE")}"
 	n="${#values[@]}"
 else
 	n=0
@@ -326,6 +328,7 @@ fi
 trap _exit 0
 WINDOW_WIDTH="$(bc<<<"$SLEEP*$COLUMNS")"
 X_TICKS_WIDTH="$(bc<<<"$X_TICKS_STEP*$SLEEP")"
+SLEEP=${SLEEP:-$SLEEP_DEFAULT}
 col=1
 # Tiny hack to have the "read-from-stdin" command
 # Read value while I don't have an int
