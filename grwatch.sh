@@ -5,8 +5,8 @@ LC_ALL=C
 # █■⯀▪·
 # Of course...
 case $(uname) in
-	Darwin)	MARK_TIP='⬥'; MARK='■' ;;
-	*)		MARK_TIP='◆'; MARK='⯀' ;;
+	Darwin)	MARK_TIP='⬥'; MARK_DEFAULT='■' ;;
+	*)		MARK_TIP='◆'; MARK_DEFAULT='⯀' ;;
 esac
 MARK_COLOR="255;255;255"
 TICK_COLOR=184
@@ -318,20 +318,21 @@ else
 	else
 		command="${1}"
 	fi
-	if [ -n "$MIN" ] && [ -n "$MAX" ] ; then
-		if [ "$MIN" -lt "$MAX" ] ; then
-			printf -v start_value '%0.0f' "$(bc <<<"scale=2;($MAX+($MIN))/2")"
-			scale_factor="$( bc <<<"scale=2;($MAX-($MIN))/$LINES" )"
-		else
-			echo "-l MUST BE strictly lower that -u" >&2
-			exit 2
-		fi
+fi
+if [ -n "$MIN" ] && [ -n "$MAX" ] ; then
+	if [ "$MIN" -lt "$MAX" ] ; then
+		printf -v start_value '%0.0f' "$(bc <<<"scale=2;($MAX+($MIN))/2")"
+		scale_factor="$( bc <<<"scale=2;($MAX-($MIN))/$LINES" )"
+	else
+		echo "-l MUST BE strictly lower that -u" >&2
+		exit 2
 	fi
 fi
 trap _exit 0
 WINDOW_WIDTH="$(bc<<<"$SLEEP*$COLUMNS")"
 X_TICKS_WIDTH="$(bc<<<"$X_TICKS_STEP*$SLEEP")"
 SLEEP=${SLEEP:-$SLEEP_DEFAULT}
+MARK=${MARK:-$MARK_DEFAULT}
 scale_factor=${scale_factor:-$scale_factor_default}
 col=1
 # Tiny hack to have the "read-from-stdin" command
