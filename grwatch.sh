@@ -329,9 +329,9 @@ if [ -n "$MIN" ] && [ -n "$MAX" ] ; then
 	fi
 fi
 trap _exit 0
+SLEEP=${SLEEP:-$SLEEP_DEFAULT}
 WINDOW_WIDTH="$(bc<<<"$SLEEP*$COLUMNS")"
 X_TICKS_WIDTH="$(bc<<<"$X_TICKS_STEP*$SLEEP")"
-SLEEP=${SLEEP:-$SLEEP_DEFAULT}
 MARK=${MARK:-$MARK_DEFAULT}
 scale_factor=${scale_factor:-$scale_factor_default}
 col=1
