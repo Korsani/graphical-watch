@@ -6,13 +6,14 @@ LC_ALL=C
 # Of course...
 case $(uname) in
 	Darwin)	MARK_TIP='⬥'; MARK_DEFAULT='■' ;;
-	*)		MARK_TIP='◆'; MARK_DEFAULT='⯀' ;;
+	*)		MARK_TIP='◆'; MARK_DEFAULT='⯀';; # MARK_DEFAULT='🔲' ;;
 esac
 MARK_COLOR="255;255;255"
 TICK_COLOR=184
 HLINE_COLOR=053
 SLEEP_DEFAULT=2
 scale_factor_default=1
+command_title_default=''
 HEADER_SIZE=2
 X_TICK='|'
 X_TICKS_STEP=5
@@ -176,11 +177,11 @@ function _usage() {
 	local bn="$(basename "$0")"
 	echo " ~ Graphical watch(1) - a.k.a Grafana in term ~"
 	echo
-	echo "$bn [ -n <interval in second> | -w <width in second> ] [ -0 <value> ] [ -f <file> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ [ -l <lower bound> -u <upper bound> ] | -s <scale> ] [ \"command than returns integer\" ]"
+	echo "$bn [ -n <interval in second> | -w <width in second> ] [ -0 <value> ] [ -f <file> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ [ -l <lower bound> -u <upper bound> ] | -s <scale> ] [ \"command than returns values\" ]"
 	echo "$bn -c -f <file>"
 	echo
 	echo "-0 : set the horizontal axis to that value"
-	echo "-c : load data and options from the -f file generated in a previous run, then run"
+	echo "-c : load data (values, command) and options (-m, -n, -s, -t, -l, -u) from the -f file generated in a previous run, then run"
 	echo "-f : dump data in that file upon exit or when SIGHUP is received"
 	echo "-l : set lower value"
 	echo "-m : use that one-char string to display dot"
@@ -224,7 +225,7 @@ function disp_status() {
 	local min=$1 value=$2 max=$3 scale_factor=$4 x=$5 y=$6
 	# status line
 	printf "\e[2;1Hm=%i M=%i wdith=%0.0fs tick=%0.01fs scale=%0.01fx x=%i y=%0.02f file=%s pid=%i\e[0K" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y" "${DUMP_FILE:-<none>}" "$$"
-	printf "\e[1;${hcenter}H\e[1;4;37m%0.02f\e[0m " "$value"
+	printf "\e[1;$((hcenter-${#value}/2-2))H[ \e[1;37m%0.02f\e[0m ] " "$value"
 	# date line
 	printf "\e[1;${DATE_COLUMNS}H%s: %s" "$HOSTNAME" "$(date -Iseconds)"
 }
@@ -285,7 +286,7 @@ while getopts '0:cf:hl:m:n:o:rs:t:u:w:' opt ; do
 		n)	is_float "$OPTARG" && SLEEP="${OPTARG}";;
 		r)	RAINBOW='y';;
 		s)	is_float "$OPTARG" && scale_factor="$OPTARG";;
-		t)	command_title="$OPTARG";;
+		t)	command_title_default="$OPTARG";;
 		u)	is_float "$OPTARG" && MAX="$OPTARG";;
 		w)	is_float "$OPTARG" && SLEEP="$( bc<<<"scale=2;$OPTARG/$COLUMNS" )";;
 	esac
@@ -332,8 +333,9 @@ trap _exit 0
 SLEEP=${SLEEP:-$SLEEP_DEFAULT}
 WINDOW_WIDTH="$(bc<<<"$SLEEP*$COLUMNS")"
 X_TICKS_WIDTH="$(bc<<<"$X_TICKS_STEP*$SLEEP")"
-MARK=${MARK:-$MARK_DEFAULT}
+MARK="${MARK:-$MARK_DEFAULT}"
 scale_factor=${scale_factor:-$scale_factor_default}
+command_title="${command_title:-$command_title_default}"
 col=1
 # Tiny hack to have the "read-from-stdin" command
 # Read value while I don't have an int
