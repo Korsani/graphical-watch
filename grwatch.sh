@@ -8,6 +8,7 @@ case $(uname) in
 	Darwin)	MARK_TIP='⬥'; MARK_DEFAULT='■' ;;
 	*)		MARK_TIP='◆'; MARK_DEFAULT='⯀';; # MARK_DEFAULT='🔲' ;;
 esac
+ASCII_RESET='\e[0m'; ASCII_DIM='\e[2m'
 MARK_COLOR="255;255;255"
 TICK_COLOR=184
 HLINE_COLOR=053
@@ -45,7 +46,7 @@ MIN=''
 MAX=''
 DUMP_FILE=''
 CONTINUE=''
-declare -a dot values
+declare -a dot dotv values
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function _check_command() {
 	while [ -n "${1:-}" ] ; do
@@ -152,7 +153,7 @@ function disp_x_ticks() {
 # Clean the screen and draw x axis
 function clean_screen() {
 	echo -ne "\e[2J\e[?25l"
-	printf "\e[1;1HEvery %0.02fs: %s" "$SLEEP" "${command_title:-$command}"
+	printf "\e[1;1HEvery %0.02fs: \e[4m%s\e[0m" "$SLEEP" "${command_title:-$command}"
 	h_line "$lcenter"
 }
 # Clean the column at (absolute) position $1
@@ -224,9 +225,10 @@ function correct_last_mark() {
 function disp_status() {
 	local min=$1 value=$2 max=$3 scale_factor=$4 x=$5 y=$6
 	# status line
-	printf "\e[2;1Hm=%i M=%i wdith=%0.0fs tick=%0.01fs scale=%0.01fx x=%i y=%0.02f file=%s pid=%i\e[0K" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y" "${DUMP_FILE:-<none>}" "$$"
+	printf "\e[2;1H\e[2mm:\e[0m%i \e[2mM:\e[0m%i \e[2mwidth:\e[0m%0.0fs \e[2mtick:\e[0m%0.01fs \e[2mscale:\e[0m%0.01fx \e[2mx:\e[0m%i \e[2my:\e[0m%i \e[2mfile:\e[0m%s \e[2mpid:\e[0m%i\e[0K" "$min" "$max" "$WINDOW_WIDTH" "$X_TICKS_WIDTH" "$scale_factor" "$x" "$int_y" "${DUMP_FILE:-<none>}" "$$"
+	# value
 	printf "\e[1;$((hcenter-${#value}/2-2))H[ \e[1;37m%0.02f\e[0m ] " "$value"
-	# date line
+	# date
 	printf "\e[1;${DATE_COLUMNS}H%s: %s" "$HOSTNAME" "$(date -Iseconds)"
 }
 function value_to_y() {
@@ -235,11 +237,12 @@ function value_to_y() {
 }
 function redraw() {
 	local till="$1"
-	local x y
+	local x
 	for x in $(seq 1 "$((till-1))") ; do
-		printf -v y '%0.0f' "$( value_to_y "${dot[$x]:-}")"	# do I have the coordinate of the values here?
+		# Store the new rescaled coordinate
+		dot[$x]="$( printf '%0.0f' "$( value_to_y "${dotv[$x]:-}")" )"
 		rgb="$(( (x + RGB_start) % ${#RGB[*]} ))"
-		echo -ne "\e[${y};${x}H\e[38;2;${RGB[$rgb]}m${MARK}\e[0m"
+		echo -ne "\e[${dot[$x]};${x}H\e[38;2;${RGB[$rgb]}m${MARK}\e[0m"
 	done
 }
 function disp_tracers() {
@@ -383,7 +386,7 @@ while true ; do
 		scale_factor="$(bc <<<"scale=2;($value-($start_value))/($LINES-$HEADER_SIZE-$lcenter)" | tr -d '-' )"
 		clean_screen
 		redraw "$col"
-		disp_status "$min" "$fvalue" "$max" "$scale_factor" "$x" "$y"
+		#disp_status "$min" "$fvalue" "$max" "$scale_factor" "$x" "$y"
 		y="$(value_to_y "$value")"
 		printf -v int_y '%0.0f' "$y"
 		_log "Set scale to $scale_factor"
@@ -395,6 +398,8 @@ while true ; do
 	rgb="$(( (n + RGB_start) % ${#RGB[*]} ))"
 	# store position of the dot (to delete it next time)
 	dot[$x]="$int_y"
+	# store the value of that point, without notion of scale
+	dotv[$x]="$fvalue"
 	# keep track of all datas
 	values[$n]="$fvalue"
 	echo -ne "\e[${int_y};${x}H\e[38;2;${RGB[$rgb]}m${MARK_TIP}\e[0m"
