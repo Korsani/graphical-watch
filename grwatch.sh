@@ -308,9 +308,9 @@ if [ -n "$CONTINUE" ] && [ -e "$DUMP_FILE" ] ; then
 	# Allow some options to be changed
 	MARK="${MARK:-$(jq -r '.infos.mark' "$DUMP_FILE")}"
 	SLEEP="${SLEEP:-$(jq -r '.infos.sleep' "$DUMP_FILE")}"
-	RAINBOW=${RAINBOW:-$(jq -r '.infos.rainbow//""' "$DUMP_FILE")}
-	MIN=${MIN:-$(jq -r '.infos.lower//""' "$DUMP_FILE")}
-	MAX=${MAX:-$(jq -r '.infos.upper//""' "$DUMP_FILE")}
+	RAINBOW="${RAINBOW:-$(jq -r '.infos.rainbow//""' "$DUMP_FILE")}"
+	MIN="${MIN:-$(jq -r '.infos.lower//""' "$DUMP_FILE")}"
+	MAX="${MAX:-$(jq -r '.infos.upper//""' "$DUMP_FILE")}"
 	scale_factor="${scale_factor:-$(jq -r '.infos.scale' "$DUMP_FILE")}"
 	n="${#values[@]}"
 else
