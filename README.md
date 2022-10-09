@@ -28,10 +28,11 @@ Copy grwatch.sh(1) somewhere accessible by your PATH, or set PATH so that it fin
 
 ## Options
 
-	grwatch.sh [ -n <interval in second> | -w <width in second> ] [ -0 <value> ] [ -f <file> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ [ -l <lower bound> -u <upper bound> ] | -s <scale> ] [ "command than returns integer" ]
+	grwatch.sh [ -n <interval in second> | -w <width in second> ] [ -0 <value> ] [ -a <suffix> ] [ -f <file> ] [ -r ] [ -m <mark> ] [ -t <command title> ] [ [ -l <lower bound> -u <upper bound> ] | -s <scale> ] [ "command than returns integer" ]
 	grwatch.sh -c -f <file>
 
 	-0 : set the horizontal axis to that value instead of the first one returned by the command (or by stdin) (or by the mean of -l and -u)
+	-a : append a suffix to the value displayed
 	-c : load data (values, command) and options (-m, -n, -s, -t, -l, -u) from the -f file generated in a previous run, then run
 	-f : dump data in that file upon exit or when SIGHUP is received
 	-l : set lower bound
