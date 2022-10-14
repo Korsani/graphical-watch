@@ -71,7 +71,7 @@ function _log() {
 # Return true if $1 is a float
 function is_float() {
 	local v="$1"
-	[[ "$v" =~ ^[-+]?[0-9]*[.,]*[0-9]+$ ]]
+	[[ "$v" =~ ^\ *[-+]?[0-9]*[.,]*[0-9]+$ ]]
 }
 # Generate the rgb dot of the hues of the chromatic circle, by steps of $1
 # Running chromatic circle make rgb value vary this way:
@@ -324,7 +324,7 @@ else
 		command="read -r v ; echo \$v"
 		command_title="${command_title:-<stdin>}"
 	else
-		command="${1}"
+		command="$@"
 	fi
 fi
 if [ -n "$MIN" ] && [ -n "$MAX" ] ; then
